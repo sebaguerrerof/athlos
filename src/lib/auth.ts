@@ -1,6 +1,8 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
   updateProfile,
@@ -10,6 +12,8 @@ import {
   Auth,
 } from 'firebase/auth';
 import { auth } from './firebase';
+
+const googleProvider = new GoogleAuthProvider();
 
 /**
  * Register a new user with email and password
@@ -50,6 +54,18 @@ export const signInWithEmail = async (
     return await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
     console.error('Error signing in:', error);
+    throw error;
+  }
+};
+
+/**
+ * Sign in with Google
+ */
+export const signInWithGoogle = async (): Promise<UserCredential> => {
+  try {
+    return await signInWithPopup(auth, googleProvider);
+  } catch (error) {
+    console.error('Error signing in with Google:', error);
     throw error;
   }
 };
