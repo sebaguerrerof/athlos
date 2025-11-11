@@ -1,0 +1,7 @@
+{
+  "name": "athlos-temp",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react-vite"
+}

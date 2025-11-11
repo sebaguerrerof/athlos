@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ionic Variables and Theming */
+@import './theme/variables.css';
