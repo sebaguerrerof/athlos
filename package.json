@@ -1,15 +1,19 @@
 {
-  "name": "athlos-temp",
+  "name": "athlos",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test.e2e": "cypress run",
-    "test.unit": "vitest",
-    "lint": "eslint"
+    "test": "vitest",
+    "test:unit": "vitest",
+    "test:e2e": "cypress run",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint",
+    "emulators": "firebase emulators:start",
+    "emulators:export": "firebase emulators:start --import=./emulator-data --export-on-exit"
   },
   "dependencies": {
     "@capacitor/app": "7.1.0",

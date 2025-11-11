@@ -12,23 +12,24 @@ Plataforma SaaS para profesores, kinesiólogos y entrenadores que permita:
 
 ## 🏗️ Sprint 0: Setup & Arquitectura Base
 **Duración estimada:** 1-2 días  
-**Objetivo:** Preparar entorno de desarrollo y estructura del proyecto
+**Objetivo:** Preparar entorno de desarrollo y estructura del proyecto  
+**Estado:** ✅ COMPLETADO
 
 ### 📦 Tasks
-- [ ] Inicializar proyecto Ionic React + TypeScript (blank template)
-- [ ] Configurar Tailwind CSS
-- [ ] Instalar y configurar shadcn/ui para Ionic
-- [ ] Configurar Firebase (proyecto + emulators)
-- [ ] Crear estructura de carpetas modular
-- [ ] Setup ESLint + Prettier + Git hooks (opcional)
-- [ ] Configurar variables de entorno (.env)
-- [ ] Inicializar Firebase Functions (TypeScript)
-- [ ] Crear archivo `firestore.rules` base
-- [ ] Documentar comandos en README.md
+- [x] Inicializar proyecto Ionic React + TypeScript (blank template)
+- [x] Configurar Tailwind CSS
+- [x] Instalar y configurar shadcn/ui para Ionic
+- [x] Configurar Firebase (proyecto + emulators)
+- [x] Crear estructura de carpetas modular
+- [x] Setup ESLint + Prettier + Git hooks (opcional)
+- [x] Configurar variables de entorno (.env)
+- [x] Inicializar Firebase Functions (TypeScript)
+- [x] Crear archivo `firestore.rules` base
+- [x] Documentar comandos en README.md
 
 ### ✅ Goals
 - ✓ Proyecto compila sin errores
-- ✓ Firebase emulators corriendo (Auth, Firestore, Functions)
+- ✓ Firebase emulators configurados (Auth, Firestore, Functions)
 - ✓ Tailwind + shadcn/ui funcionando
 - ✓ Hot reload funcional
 - ✓ Git inicializado con `.gitignore` correcto
