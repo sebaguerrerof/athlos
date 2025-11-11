@@ -140,12 +140,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const value: AuthContextValue = useMemo(() => ({
-    ...state,
+  const value = useMemo<AuthContextValue>(() => ({
+    user: state.user,
+    userProfile: state.userProfile,
+    tenant: state.tenant,
+    loading: state.loading,
+    initialized: state.initialized,
     login,
     register,
     logout,
-  }), [state, login, register, logout]);
+  }), [state.user, state.userProfile, state.tenant, state.loading, state.initialized, login, register, logout]);
+
+  // Only render children after provider is ready to prevent loops
+  if (!state.initialized) {
+    return (
+      <AuthContext.Provider value={value}>
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        </div>
+      </AuthContext.Provider>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

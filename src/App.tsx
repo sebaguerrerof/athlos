@@ -16,22 +16,16 @@ const App: React.FC = () => (
       <IonReactRouter>
         <IonRouterOutlet>
           {/* Public Routes */}
-          <Route exact path="/login">
-            <LoginPage />
-          </Route>
-          <Route exact path="/register">
-            <RegisterPage />
-          </Route>
-          <Route exact path="/reset-password">
-            <ResetPasswordPage />
-          </Route>
+          <Route exact path="/login" component={LoginPage} />
+          <Route exact path="/register" component={RegisterPage} />
+          <Route exact path="/reset-password" component={ResetPasswordPage} />
 
           {/* Private Routes */}
           <PrivateRoute exact path="/home" component={HomePage} />
 
-          {/* Default Redirect */}
+          {/* Default Redirect - go to login */}
           <Route exact path="/">
-            <Redirect to="/home" />
+            <Redirect to="/login" />
           </Route>
         </IonRouterOutlet>
       </IonReactRouter>
