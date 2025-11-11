@@ -23,6 +23,7 @@ service cloud.firestore {
     // Users collection - users can only read/write their own document
     match /users/{userId} {
       allow read: if isOwner(userId);
+      // Allow create for new users (first time registration)
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
       allow delete: if false; // Prevent accidental deletion
@@ -31,11 +32,13 @@ service cloud.firestore {
     // Tenants collection
     match /tenants/{tenantId} {
       // Only tenant members can read tenant data
-      allow read: if belongsToTenant(tenantId);
-      // Only the owner can create a tenant (handled in Cloud Function)
+      allow read: if belongsToTenant(tenantId) || 
+                     (isAuthenticated() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid);
+      // Allow create for authenticated users (new tenant creation)
       allow create: if isAuthenticated();
       // Only tenant members can update
-      allow update: if belongsToTenant(tenantId);
+      allow update: if belongsToTenant(tenantId) ||
+                      (isAuthenticated() && resource.data.ownerId == request.auth.uid);
       allow delete: if false; // Prevent deletion
       
       // Clients subcollection

@@ -14,15 +14,19 @@ export interface CreateTenantData {
  * This is a fallback when Cloud Functions are not available
  */
 export const createTenantAndUser = async (data: CreateTenantData) => {
+  console.log('🔥 createTenantAndUser called with:', { userId: data.userId, email: data.email });
+  
   try {
     // Check if user already exists
+    console.log('📋 Checking if user exists...');
     const userDoc = await getDoc(doc(db, 'users', data.userId));
     if (userDoc.exists()) {
-      console.log('User already exists, skipping creation');
+      console.log('✅ User already exists, skipping creation');
       const userData = userDoc.data();
       return { tenantId: userData.tenantId, userId: data.userId };
     }
 
+    console.log('🏢 Creating tenant document...');
     // Create tenant document
     const tenantRef = doc(collection(db, 'tenants'));
     const tenantId = tenantRef.id;
@@ -48,8 +52,9 @@ export const createTenantAndUser = async (data: CreateTenantData) => {
       isActive: true,
     });
 
-    console.log(`Tenant created with ID: ${tenantId}`);
+    console.log(`✅ Tenant created with ID: ${tenantId}`);
 
+    console.log('👤 Creating user document...');
     // Create user document
     await setDoc(doc(db, 'users', data.userId), {
       uid: data.userId,
@@ -64,11 +69,12 @@ export const createTenantAndUser = async (data: CreateTenantData) => {
       isActive: true,
     });
 
-    console.log(`User document created for ${data.userId}`);
+    console.log(`✅ User document created for ${data.userId}`);
+    console.log('🎉 Tenant and user creation completed successfully!');
 
     return { tenantId, userId: data.userId };
   } catch (error) {
-    console.error('Error creating tenant and user:', error);
+    console.error('❌ Error creating tenant and user:', error);
     throw error;
   }
 };
