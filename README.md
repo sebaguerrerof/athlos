@@ -81,7 +81,9 @@ firebase setup:emulators:functions
 ### Frontend (Ionic + React)
 
 ```bash
-# Modo desarrollo con hot reload
+# Modo desarrollo con Ionic CLI (RECOMENDADO)
+ionic serve
+# o usando npm
 npm run dev
 
 # Build para producción
@@ -96,6 +98,11 @@ npm run test
 # Lint
 npm run lint
 ```
+
+**Servidor de desarrollo:**
+- URL: http://localhost:8100
+- Hot reload automático
+- Ionic DevApp compatible
 
 ### Firebase Emulators
 

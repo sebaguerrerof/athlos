@@ -1,4 +1,5 @@
 import { useIonToast } from '@ionic/react';
+import { useCallback } from 'react';
 
 export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
 
@@ -16,7 +17,7 @@ export interface ToastOptions {
 export const useToast = () => {
   const [present] = useIonToast();
 
-  const toast = ({ title, message, variant = 'info', duration = 3000 }: ToastOptions) => {
+  const toast = useCallback(({ title, message, variant = 'info', duration = 3000 }: ToastOptions) => {
     const colors: Record<ToastVariant, string> = {
       success: 'success',
       error: 'danger',
@@ -44,7 +45,7 @@ export const useToast = () => {
         },
       ],
     });
-  };
+  }, [present]);
 
   return { toast };
 };
