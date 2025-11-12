@@ -1,4 +1,3 @@
-import { IonContent, IonPage, IonSpinner } from '@ionic/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,6 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { signInWithEmail, signInWithGoogle } from '@/lib/auth';
 import { createTenantAndUser } from '@/lib/tenant';
 import { getAuthErrorMessage } from './types';
+import { Loader2 } from 'lucide-react';
 
 // Validation schema
 const loginSchema = z.object({
@@ -123,10 +123,8 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <IonPage>
-      <IonContent className="ion-padding">
-        <div className="flex min-h-full items-center justify-center px-4 py-12">
-          <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-12">
+      <Card className="w-full max-w-md shadow-lg">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold text-center">
                 Iniciar sesión
@@ -204,7 +202,7 @@ export const LoginPage: React.FC = () => {
                 >
                   {isLoading ? (
                     <>
-                      <IonSpinner name="crescent" className="mr-2 h-4 w-4" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Iniciando sesión...
                     </>
                   ) : (
@@ -268,7 +266,5 @@ export const LoginPage: React.FC = () => {
             </form>
           </Card>
         </div>
-      </IonContent>
-    </IonPage>
   );
 };
