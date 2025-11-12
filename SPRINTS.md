@@ -54,18 +54,22 @@ README.md
 ## 🔐 Sprint 1: Autenticación & Tenant Base
 **Duración estimada:** 3-4 días  
 **Objetivo:** Sistema de registro/login con arquitectura multi-tenant
+**Estado:** ✅ COMPLETADO
 
 ### 📦 Tasks
-- [ ] Crear tipos TypeScript para User, Tenant, Role
-- [ ] Implementar registro de profesor (email/password)
-- [ ] Crear documento de Tenant en Firestore al registrar
-- [ ] Asignar Custom Claim `tenantId` vía Cloud Function
-- [ ] Implementar login/logout
-- [ ] Crear contexto de autenticación (AuthContext)
-- [ ] Proteger rutas con PrivateRoute
-- [ ] UI: pantallas de Login, Register, ResetPassword
-- [ ] Validación de formularios con react-hook-form + zod
-- [ ] Toast notifications para feedback
+- [x] Crear tipos TypeScript para User, Tenant, Role
+- [x] Implementar registro de profesor (email/password)
+- [x] Crear documento de Tenant en Firestore al registrar
+- [x] Asignar Custom Claim `tenantId` vía Cloud Function
+- [x] Implementar login/logout
+- [x] Crear contexto de autenticación (AuthContext)
+- [x] Proteger rutas con PrivateRoute
+- [x] UI: pantallas de Login, Register, ResetPassword
+- [x] Validación de formularios con react-hook-form + zod
+- [x] Toast notifications para feedback
+- [x] **BONUS:** Migración completa de Ionic a Tailwind + shadcn
+- [x] **BONUS:** Google OAuth implementado
+- [x] **BONUS:** DashboardLayout con sidebar responsivo
 
 ### ✅ Goals
 - ✓ Profesor puede registrarse y auto-crear tenant
@@ -116,11 +120,13 @@ tenants/
 ## 👥 Sprint 2: Gestión de Clientes
 **Duración estimada:** 2-3 días  
 **Objetivo:** CRUD de clientes asociados al tenant
+**Estado:** 🔄 EN PROGRESO
 
 ### 📦 Tasks
-- [ ] Crear tipos TypeScript para Client
+- [x] Crear tipos TypeScript para Client
+- [x] UI: Página base de lista de clientes
+- [x] UI: Estructura de búsqueda y filtros
 - [ ] Implementar CRUD de clientes (Firestore)
-- [ ] UI: Lista de clientes con búsqueda y filtros
 - [ ] UI: Formulario crear/editar cliente
 - [ ] Modal de confirmación para eliminar
 - [ ] Asignar Custom Claim `clientOf: [tenantId]` al invitar cliente
