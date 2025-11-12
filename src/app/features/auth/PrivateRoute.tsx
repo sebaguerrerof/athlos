@@ -1,7 +1,7 @@
 import React from 'react';
 import { Route, Redirect, RouteProps } from 'react-router-dom';
-import { IonSpinner, IonContent, IonPage } from '@ionic/react';
 import { useAuth } from './AuthContext';
+import { Loader2 } from 'lucide-react';
 
 interface PrivateRouteProps extends RouteProps {
   component: React.ComponentType<any>;
@@ -28,13 +28,12 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({
         // Show loading spinner while auth is initializing
         if (loading || !initialized) {
           return (
-            <IonPage>
-              <IonContent className="ion-padding">
-                <div className="flex min-h-full items-center justify-center">
-                  <IonSpinner name="crescent" />
-                </div>
-              </IonContent>
-            </IonPage>
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <div className="text-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+                <p className="text-gray-600">Cargando...</p>
+              </div>
+            </div>
           );
         }
 

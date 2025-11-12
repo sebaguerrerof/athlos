@@ -1,4 +1,4 @@
-import { useIonToast } from '@ionic/react';
+import { toast as sonnerToast } from 'sonner';
 import { useCallback } from 'react';
 
 export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
@@ -12,40 +12,22 @@ export interface ToastOptions {
 
 /**
  * Custom hook for showing toast notifications
- * Uses Ionic Toast component
+ * Uses Sonner (shadcn toast component)
  */
 export const useToast = () => {
-  const [present] = useIonToast();
-
   const toast = useCallback(({ title, message, variant = 'info', duration = 3000 }: ToastOptions) => {
-    const colors: Record<ToastVariant, string> = {
-      success: 'success',
-      error: 'danger',
-      warning: 'warning',
-      info: 'primary',
-    };
+    const toastFn = {
+      success: sonnerToast.success,
+      error: sonnerToast.error,
+      warning: sonnerToast.warning,
+      info: sonnerToast.info,
+    }[variant];
 
-    const icons: Record<ToastVariant, string> = {
-      success: 'checkmark-circle',
-      error: 'close-circle',
-      warning: 'warning',
-      info: 'information-circle',
-    };
-
-    present({
-      message: title ? `<strong>${title}</strong><br/>${message}` : message,
+    toastFn(title || message, {
+      description: title ? message : undefined,
       duration,
-      color: colors[variant],
-      icon: icons[variant],
-      position: 'top',
-      buttons: [
-        {
-          text: 'Cerrar',
-          role: 'cancel',
-        },
-      ],
     });
-  }, [present]);
+  }, []);
 
   return { toast };
 };
