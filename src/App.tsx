@@ -6,6 +6,8 @@ import { LoginPage } from './app/features/auth/LoginPage';
 import { RegisterPage } from './app/features/auth/RegisterPage';
 import { ResetPasswordPage } from './app/features/auth/ResetPasswordPage';
 import { HomePage } from './app/features/home/HomePage';
+import { CalendarPage } from './app/features/calendar/CalendarPage';
+import { ClientListPage } from './app/features/clients/ClientListPage';
 import { Toaster } from '@/components/ui/sonner';
 
 const App: React.FC = () => (
@@ -19,6 +21,8 @@ const App: React.FC = () => (
 
         {/* Private Routes */}
         <PrivateRoute exact path="/home" component={HomePage} />
+        <PrivateRoute exact path="/calendar" component={CalendarPage} />
+        <PrivateRoute exact path="/clients" component={ClientListPage} />
 
         {/* Default Redirect - go to login */}
         <Route exact path="/">
