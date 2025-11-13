@@ -26,6 +26,7 @@ export interface Appointment {
   status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
   isPaid?: boolean; // Payment status
   notes?: string;
+  recurringGroupId?: string; // ID del grupo de clases recurrentes
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -38,6 +39,7 @@ export interface CreateAppointmentData {
   startTime: string;
   duration: number;
   notes?: string;
+  recurringGroupId?: string;
 }
 
 export const useAppointments = () => {
@@ -106,6 +108,7 @@ export const useAppointments = () => {
         duration: data.duration,
         status: 'scheduled' as const,
         isPaid: false,
+        recurringGroupId: data.recurringGroupId || null,
         notes: data.notes || '',
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),

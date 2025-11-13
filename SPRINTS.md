@@ -120,15 +120,16 @@ tenants/
 ## 👥 Sprint 2: Gestión de Clientes
 **Duración estimada:** 2-3 días  
 **Objetivo:** CRUD de clientes asociados al tenant
-**Estado:** 🔄 EN PROGRESO
+**Estado:** ✅ COMPLETADO
 
 ### 📦 Tasks
 - [x] Crear tipos TypeScript para Client
 - [x] UI: Página base de lista de clientes
 - [x] UI: Estructura de búsqueda y filtros
-- [ ] Implementar CRUD de clientes (Firestore)
-- [ ] UI: Formulario crear/editar cliente
-- [ ] Modal de confirmación para eliminar
+- [x] Implementar CRUD de clientes (Firestore)
+- [x] UI: Formulario crear/editar cliente
+- [x] Modal de confirmación para eliminar
+- [x] Firestore rules con validaciones de campos
 - [ ] Asignar Custom Claim `clientOf: [tenantId]` al invitar cliente
 - [ ] Enviar invitación por email (Cloud Function)
 - [ ] Cliente acepta invitación y crea cuenta
@@ -136,11 +137,12 @@ tenants/
 
 ### ✅ Goals
 - ✓ Profesor puede crear, editar, listar, eliminar clientes
-- ✓ Búsqueda y filtros funcionan
-- ✓ Invitación por email funciona
-- ✓ Cliente invitado se registra y queda vinculado al tenant
-- ✓ Firestore rules validan que cliente solo accede a su tenant
+- ✓ Búsqueda funciona por nombre y email
 - ✓ UI optimista con loading states
+- ✓ Firestore rules validan estructura de datos
+- ✓ Toast notifications para feedback
+- ⚠️ Invitación por email (pendiente, no bloquea Sprint 3)
+- ⚠️ Cliente invitado se registra (pendiente, no bloquea Sprint 3)
 
 ### 📁 Archivos esperados
 ```

@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   Dumbbell,
-  CreditCard
+  CreditCard,
+  Repeat
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -35,10 +36,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const navItems: NavItem[] = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/home' },
     { label: 'Agenda', icon: Calendar, path: '/calendar' },
+    { label: 'Clases Recurrentes', icon: Repeat, path: '/recurring-classes' },
+    { label: 'Disponibilidad', icon: Settings, path: '/availability' },
     { label: 'Clientes', icon: Users, path: '/clients' },
     { label: 'Rutinas', icon: Dumbbell, path: '/routines' },
     { label: 'Pagos', icon: CreditCard, path: '/payments' },
-    { label: 'Configuración', icon: Settings, path: '/settings' },
   ];
 
   const handleLogout = async () => {

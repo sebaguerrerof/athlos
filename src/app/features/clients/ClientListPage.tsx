@@ -3,13 +3,18 @@ import { DashboardLayout } from '@/app/layouts/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, UserPlus, UserCheck, UserX, Mail, Phone } from 'lucide-react';
+import { Plus, Search, Users, UserPlus, UserCheck, UserX, Mail, Phone, Pencil, Trash2 } from 'lucide-react';
 import { NewClientModal } from './NewClientModal';
-import { useClients } from './hooks/useClients';
+import { EditClientModal } from './EditClientModal';
+import { DeleteClientModal } from './DeleteClientModal';
+import { useClients, Client } from './hooks/useClients';
 
 export const ClientListPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const [showEditClientModal, setShowEditClientModal] = useState(false);
+  const [showDeleteClientModal, setShowDeleteClientModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { clients, loading } = useClients();
 
   // Filter clients by search query
@@ -21,6 +26,16 @@ export const ClientListPage: React.FC = () => {
   const handleOpenModal = () => {
     console.log('Abriendo modal de nuevo cliente...');
     setShowNewClientModal(true);
+  };
+
+  const handleEditClient = (client: Client) => {
+    setSelectedClient(client);
+    setShowEditClientModal(true);
+  };
+
+  const handleDeleteClient = (client: Client) => {
+    setSelectedClient(client);
+    setShowDeleteClientModal(true);
   };
 
   const activeClients = clients.filter((c) => c.status === 'active').length;
@@ -161,7 +176,7 @@ export const ClientListPage: React.FC = () => {
                         {client.status === 'active' ? 'Activo' : client.status === 'invited' ? 'Invitado' : 'Inactivo'}
                       </span>
                     </div>
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-2 text-sm mb-3">
                       <div className="flex items-center text-gray-600">
                         <Mail className="h-4 w-4 mr-2" />
                         {client.email}
@@ -172,6 +187,26 @@ export const ClientListPage: React.FC = () => {
                           {client.phone}
                         </div>
                       )}
+                    </div>
+                    <div className="flex items-center space-x-2 pt-3 border-t border-gray-100">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditClient(client)}
+                        className="flex-1"
+                      >
+                        <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteClient(client)}
+                        className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                        Eliminar
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -185,6 +220,20 @@ export const ClientListPage: React.FC = () => {
       <NewClientModal
         open={showNewClientModal}
         onOpenChange={setShowNewClientModal}
+      />
+
+      {/* Edit Client Modal */}
+      <EditClientModal
+        open={showEditClientModal}
+        onOpenChange={setShowEditClientModal}
+        client={selectedClient}
+      />
+
+      {/* Delete Client Modal */}
+      <DeleteClientModal
+        open={showDeleteClientModal}
+        onOpenChange={setShowDeleteClientModal}
+        client={selectedClient}
       />
     </DashboardLayout>
   );

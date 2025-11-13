@@ -80,10 +80,33 @@ export const useClients = () => {
     return docRef.id;
   };
 
+  const updateClient = async (clientId: string, updates: Partial<Omit<Client, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    if (!tenant?.id) throw new Error('No tenant ID');
+
+    const { doc, updateDoc } = await import('firebase/firestore');
+    const clientRef = doc(db, 'tenants', tenant.id, 'clients', clientId);
+    
+    await updateDoc(clientRef, {
+      ...updates,
+      updatedAt: Timestamp.now(),
+    });
+  };
+
+  const deleteClient = async (clientId: string) => {
+    if (!tenant?.id) throw new Error('No tenant ID');
+
+    const { doc, deleteDoc } = await import('firebase/firestore');
+    const clientRef = doc(db, 'tenants', tenant.id, 'clients', clientId);
+    
+    await deleteDoc(clientRef);
+  };
+
   return {
     clients,
     loading,
     error,
     addClient,
+    updateClient,
+    deleteClient,
   };
 };

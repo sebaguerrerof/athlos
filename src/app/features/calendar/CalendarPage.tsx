@@ -11,10 +11,16 @@ import { sportOptions } from '@/app/shared/types/sports';
 export const CalendarPage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showNewAppointmentModal, setShowNewAppointmentModal] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
   const { appointments, loading } = useAppointments();
 
   console.log('🗓️ CalendarPage - Appointments:', appointments.length, 'Loading:', loading);
+
+  // Obtener el appointment actualizado en tiempo real
+  const selectedAppointment = useMemo(() => {
+    if (!selectedAppointmentId) return null;
+    return appointments.find(apt => apt.id === selectedAppointmentId) || null;
+  }, [selectedAppointmentId, appointments]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -224,7 +230,7 @@ export const CalendarPage: React.FC = () => {
                           {dayAppointments.map((apt) => (
                             <div
                               key={apt.id}
-                              onClick={() => setSelectedAppointment(apt)}
+                              onClick={() => setSelectedAppointmentId(apt.id)}
                               className={`p-2 rounded-lg border-l-4 ${getSportColor(apt.sportType)} bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
                             >
                               <div className="flex items-center gap-1 mb-1">
@@ -306,7 +312,7 @@ export const CalendarPage: React.FC = () => {
       {/* Appointment Detail Modal */}
       <AppointmentDetailModal
         open={selectedAppointment !== null}
-        onOpenChange={(open) => !open && setSelectedAppointment(null)}
+        onOpenChange={(open) => !open && setSelectedAppointmentId(null)}
         appointment={selectedAppointment}
       />
     </DashboardLayout>

@@ -43,36 +43,55 @@ service cloud.firestore {
       
       // Clients subcollection
       match /clients/{clientId} {
-        // Allow access if user is owner OR belongs to tenant
-        allow read: if belongsToTenant(tenantId) || 
-                       (isAuthenticated() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid);
-        allow create: if belongsToTenant(tenantId) ||
-                         (isAuthenticated() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid);
-        allow update: if belongsToTenant(tenantId) ||
-                         (isAuthenticated() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid);
-        allow delete: if belongsToTenant(tenantId) ||
-                         (isAuthenticated() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid);
+        // Helper to check if user has permission (owner or instructor)
+        function canAccessClients() {
+          return belongsToTenant(tenantId);
+        }
+        
+        // Allow read/write if user belongs to tenant
+        allow read: if canAccessClients();
+        allow create: if canAccessClients() && 
+                         request.resource.data.keys().hasAll(['name', 'email', 'status', 'createdAt', 'updatedAt']) &&
+                         request.resource.data.status in ['active', 'invited', 'inactive'] &&
+                         request.resource.data.email is string &&
+                         request.resource.data.name is string;
+        allow update: if canAccessClients() &&
+                         request.resource.data.keys().hasAll(['name', 'email', 'status', 'updatedAt']) &&
+                         request.resource.data.status in ['active', 'invited', 'inactive'];
+        allow delete: if canAccessClients();
       }
       
       // Appointments subcollection
       match /appointments/{appointmentId} {
-        // Allow access if user is owner OR belongs to tenant
-        allow read: if belongsToTenant(tenantId) || 
-                       (isAuthenticated() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid);
-        allow create: if belongsToTenant(tenantId) ||
-                         (isAuthenticated() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid);
-        allow update: if belongsToTenant(tenantId) ||
-                         (isAuthenticated() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid);
-        allow delete: if belongsToTenant(tenantId) ||
-                         (isAuthenticated() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid);
+        function canAccessAppointments() {
+          return belongsToTenant(tenantId);
+        }
+        
+        allow read: if canAccessAppointments();
+        allow create: if canAccessAppointments() &&
+                         request.resource.data.keys().hasAll(['clientId', 'startTime', 'status', 'createdAt', 'updatedAt']) &&
+                         request.resource.data.status in ['pending', 'confirmed', 'completed', 'cancelled'];
+        allow update: if canAccessAppointments() &&
+                         request.resource.data.status in ['pending', 'confirmed', 'completed', 'cancelled'];
+        allow delete: if canAccessAppointments();
       }
       
       // Availability subcollection
       match /availability/{availabilityId} {
-        allow read: if belongsToTenant(tenantId);
-        allow create: if belongsToTenant(tenantId);
-        allow update: if belongsToTenant(tenantId);
-        allow delete: if belongsToTenant(tenantId);
+        function canManageAvailability() {
+          return belongsToTenant(tenantId);
+        }
+        
+        allow read: if canManageAvailability();
+        allow create: if canManageAvailability() &&
+                         request.resource.data.keys().hasAll(['dayOfWeek', 'startTime', 'endTime', 'duration', 'isActive', 'createdAt', 'updatedAt']) &&
+                         request.resource.data.dayOfWeek is int &&
+                         request.resource.data.dayOfWeek >= 0 &&
+                         request.resource.data.dayOfWeek <= 6 &&
+                         request.resource.data.duration is int &&
+                         request.resource.data.duration >= 15;
+        allow update: if canManageAvailability();
+        allow delete: if canManageAvailability();
       }
       
       // Payments subcollection

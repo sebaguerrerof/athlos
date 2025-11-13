@@ -7,6 +7,8 @@ import { RegisterPage } from './app/features/auth/RegisterPage';
 import { ResetPasswordPage } from './app/features/auth/ResetPasswordPage';
 import { HomePage } from './app/features/home/HomePage';
 import { CalendarPage } from './app/features/calendar/CalendarPage';
+import { RecurringClassesPage } from './app/features/calendar/RecurringClassesPage';
+import { AvailabilitySettings } from './app/features/calendar/AvailabilitySettings';
 import { ClientListPage } from './app/features/clients/ClientListPage';
 import { OnboardingPage } from './app/features/onboarding/OnboardingPage';
 import { Toaster } from '@/components/ui/sonner';
@@ -26,6 +28,8 @@ const App: React.FC = () => (
         {/* Private Routes */}
         <PrivateRoute exact path="/home" component={HomePage} />
         <PrivateRoute exact path="/calendar" component={CalendarPage} />
+        <PrivateRoute exact path="/recurring-classes" component={RecurringClassesPage} />
+        <PrivateRoute exact path="/availability" component={AvailabilitySettings} />
         <PrivateRoute exact path="/clients" component={ClientListPage} />
 
         {/* Default Redirect - go to login */}

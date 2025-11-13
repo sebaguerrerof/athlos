@@ -21,6 +21,8 @@ const appointmentSchema = z.object({
   duration: z.number().min(15, 'Duración mínima: 15 minutos'),
   sportType: z.string().min(1, 'Selecciona un tipo de actividad'),
   notes: z.string().optional(),
+  isRecurring: z.boolean().optional(),
+  recurringEndDate: z.string().optional(),
 });
 
 type AppointmentFormData = z.infer<typeof appointmentSchema>;
@@ -35,8 +37,9 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   onOpenChange,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
   const { clients, loading: loadingClients } = useClients();
-  const { addAppointment } = useAppointments();
+  const { addAppointment, appointments } = useAppointments();
   const { tenant } = useAuth();
   const history = useHistory();
 
@@ -65,25 +68,106 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   const onSubmit = async (data: AppointmentFormData) => {
     setIsLoading(true);
     try {
+      // Validar horario disponible
+      const [hours, minutes] = data.startTime.split(':').map(Number);
+      const startMinutes = hours * 60 + minutes;
+      const endMinutes = startMinutes + data.duration;
+
+      const hasConflict = appointments.some(apt => {
+        if (apt.date !== data.date || apt.status === 'cancelled') return false;
+        
+        const [aptHours, aptMinutes] = apt.startTime.split(':').map(Number);
+        const aptStartMinutes = aptHours * 60 + aptMinutes;
+        const aptEndMinutes = aptStartMinutes + apt.duration;
+
+        return (
+          (startMinutes >= aptStartMinutes && startMinutes < aptEndMinutes) ||
+          (endMinutes > aptStartMinutes && endMinutes <= aptEndMinutes) ||
+          (startMinutes <= aptStartMinutes && endMinutes >= aptEndMinutes)
+        );
+      });
+
+      if (hasConflict) {
+        toast.error('Horario ocupado', {
+          description: 'Ya tienes una clase programada en ese horario',
+        });
+        setIsLoading(false);
+        return;
+      }
+
       // Get client name for denormalization
       const client = clients.find(c => c.id === data.clientId);
       if (!client) {
         throw new Error('Cliente no encontrado');
       }
 
-      await addAppointment({
-        clientId: data.clientId,
-        clientName: client.name,
-        sportType: data.sportType,
-        date: data.date,
-        startTime: data.startTime,
-        duration: data.duration,
-        notes: data.notes,
-      });
-      
-      toast.success('Clase creada', {
-        description: `Clase de ${availableSports.find(s => s.value === data.sportType)?.label} programada con ${client.name}`,
-      });
+      if (isRecurring && data.recurringEndDate) {
+        // Crear clases recurrentes
+        const recurringGroupId = `recurring_${Date.now()}`;
+        const startDate = new Date(data.date);
+        const endDate = new Date(data.recurringEndDate);
+        const dayOfWeek = startDate.getDay();
+        
+        const datesToCreate: string[] = [];
+        let currentDate = new Date(startDate);
+        
+        while (currentDate <= endDate) {
+          if (currentDate.getDay() === dayOfWeek && currentDate >= startDate) {
+            datesToCreate.push(currentDate.toISOString().split('T')[0]);
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // Crear todas las clases
+        let createdCount = 0;
+        for (const dateStr of datesToCreate) {
+          // Validar cada fecha
+          const dateHasConflict = appointments.some(apt => {
+            if (apt.date !== dateStr || apt.status === 'cancelled') return false;
+            const [aptHours, aptMinutes] = apt.startTime.split(':').map(Number);
+            const aptStartMinutes = aptHours * 60 + aptMinutes;
+            const aptEndMinutes = aptStartMinutes + apt.duration;
+            return (
+              (startMinutes >= aptStartMinutes && startMinutes < aptEndMinutes) ||
+              (endMinutes > aptStartMinutes && endMinutes <= aptEndMinutes) ||
+              (startMinutes <= aptStartMinutes && endMinutes >= aptEndMinutes)
+            );
+          });
+
+          if (!dateHasConflict) {
+            await addAppointment({
+              clientId: data.clientId,
+              clientName: client.name,
+              sportType: data.sportType,
+              date: dateStr,
+              startTime: data.startTime,
+              duration: data.duration,
+              notes: data.notes,
+              recurringGroupId,
+            });
+            createdCount++;
+          }
+        }
+
+        toast.success('Clases creadas', {
+          description: `${createdCount} clases recurrentes programadas con ${client.name}`,
+        });
+      } else {
+        // Crear clase única
+        await addAppointment({
+          clientId: data.clientId,
+          clientName: client.name,
+          sportType: data.sportType,
+          date: data.date,
+          startTime: data.startTime,
+          duration: data.duration,
+          notes: data.notes,
+        });
+        
+        toast.success('Clase creada', {
+          description: `Clase de ${availableSports.find(s => s.value === data.sportType)?.label} programada con ${client.name}`,
+        });
+      }
       
       reset();
       onOpenChange(false);
@@ -273,6 +357,40 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
             ))}
           </select>
         </div>
+
+        {/* Recurring Toggle */}
+        <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <input
+            type="checkbox"
+            id="isRecurring"
+            checked={isRecurring}
+            onChange={(e) => setIsRecurring(e.target.checked)}
+            disabled={isLoading}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <Label htmlFor="isRecurring" className="text-sm font-medium cursor-pointer">
+            Clase recurrente (repetir semanalmente)
+          </Label>
+        </div>
+
+        {/* Recurring End Date */}
+        {isRecurring && (
+          <div className="space-y-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <Label htmlFor="recurringEndDate">
+              Fecha de finalización <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="recurringEndDate"
+              type="date"
+              {...register('recurringEndDate')}
+              disabled={isLoading}
+              min={watch('date') || new Date().toISOString().split('T')[0]}
+            />
+            <p className="text-xs text-gray-600">
+              Se crearán clases cada {watch('date') ? new Date(watch('date')).toLocaleDateString('es-ES', { weekday: 'long' }) : 'semana'} hasta esta fecha
+            </p>
+          </div>
+        )}
 
         {/* Notes */}
         <div className="space-y-2">

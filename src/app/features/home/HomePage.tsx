@@ -2,14 +2,22 @@ import { useAuth } from '../auth/AuthContext';
 import { DashboardLayout } from '@/app/layouts/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Users, Activity, TrendingUp } from 'lucide-react';
+import { useClients } from '../clients/hooks/useClients';
 
 export const HomePage: React.FC = () => {
   const { user, userProfile, tenant } = useAuth();
+  const { clients } = useClients();
+
+  // Calculate active clients
+  const activeClients = clients.filter(c => c.status === 'active').length;
+
+  // Safe check for isActive - defaults to true if undefined (backwards compatibility)
+  const isUserActive = userProfile?.isActive !== false;
 
   const stats = [
     {
       title: 'Clientes Activos',
-      value: '0',
+      value: activeClients.toString(),
       icon: Users,
       description: 'Total de clientes registrados',
       color: 'text-blue-600',
@@ -102,18 +110,18 @@ export const HomePage: React.FC = () => {
               </div>
               <div className="flex justify-between py-3 border-b border-gray-100">
                 <span className="text-sm font-medium text-gray-600">Rol</span>
-                <span className="text-sm font-semibold text-gray-900 capitalize">{user?.role}</span>
+                <span className="text-sm font-semibold text-gray-900 capitalize">{userProfile?.role || user?.role}</span>
               </div>
               <div className="flex justify-between py-3 border-b border-gray-100">
                 <span className="text-sm font-medium text-gray-600">Estado</span>
-                <span className={`text-sm font-semibold inline-flex items-center px-2.5 py-0.5 rounded-full ${user?.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  {user?.isActive ? '● Activo' : '● Inactivo'}
+                <span className={`text-sm font-semibold inline-flex items-center px-2.5 py-0.5 rounded-full ${isUserActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  {isUserActive ? '● Activo' : '● Inactivo'}
                 </span>
               </div>
               <div className="flex justify-between py-3">
                 <span className="text-sm font-medium text-gray-600">Email verificado</span>
-                <span className={`text-sm font-semibold inline-flex items-center px-2.5 py-0.5 rounded-full ${user?.emailVerified ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
-                  {user?.emailVerified ? '✓ Verificado' : '⏱ Pendiente'}
+                <span className={`text-sm font-semibold inline-flex items-center px-2.5 py-0.5 rounded-full ${userProfile?.emailVerified ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                  {userProfile?.emailVerified ? '✓ Verificado' : '⏱ Pendiente'}
                 </span>
               </div>
             </CardContent>

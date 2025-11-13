@@ -2,6 +2,14 @@ import { useState } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Appointment, useAppointments } from './hooks/useAppointments';
 import { sportOptions } from '@/app/shared/types/sports';
 import { 
@@ -12,7 +20,8 @@ import {
   XCircle, 
   DollarSign,
   Trash2,
-  Edit
+  Edit,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -28,11 +37,10 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
   appointment,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { updateAppointment, deleteAppointment } = useAppointments();
 
-  if (!appointment) return null;
-
-  const sport = sportOptions.find(s => s.value === appointment.sportType);
+  const sport = appointment ? sportOptions.find(s => s.value === appointment.sportType) : null;
   
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -45,6 +53,8 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
   };
 
   const handleStatusChange = async (newStatus: Appointment['status']) => {
+    if (!appointment) return;
+    
     setIsLoading(true);
     try {
       await updateAppointment(appointment.id, { status: newStatus });
@@ -62,39 +72,50 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
   };
 
   const handlePaymentToggle = async () => {
+    if (!appointment) return;
+    
     setIsLoading(true);
+    const newStatus = !appointment.isPaid;
+    
     try {
-      const newPaymentStatus = !appointment.isPaid;
-      await updateAppointment(appointment.id, { isPaid: newPaymentStatus });
-      toast.success(newPaymentStatus ? 'Marcada como pagada' : 'Marcada como no pagada');
-    } catch (error) {
-      console.error('Error updating payment:', error);
-      toast.error('Error', {
-        description: 'No se pudo actualizar el estado de pago',
+      await updateAppointment(appointment.id, {
+        isPaid: newStatus,
       });
+      
+      toast.success(newStatus ? 'Clase marcada como pagada ✓' : 'Marcada como pendiente');
+    } catch (error) {
+      console.error('Error al actualizar pago:', error);
+      toast.error('Error al actualizar el pago');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta clase?')) {
-      return;
-    }
+    if (!appointment) return;
+    
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!appointment) return;
 
     setIsLoading(true);
     try {
       await deleteAppointment(appointment.id);
-      toast.success('Clase eliminada');
+      toast.success('Clase eliminada exitosamente');
+      setShowDeleteConfirm(false);
       onOpenChange(false);
     } catch (error) {
-      console.error('Error deleting appointment:', error);
-      toast.error('Error', {
-        description: 'No se pudo eliminar la clase',
-      });
+      console.error('Error al eliminar:', error);
+      toast.error('Error al eliminar la clase');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
   };
 
   const getStatusLabel = (status: Appointment['status']) => {
@@ -117,7 +138,9 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
     return colors[status];
   };
 
-  return (
+  if (!appointment) return null;
+
+  return (<>
     <Modal
       isOpen={open}
       onClose={() => onOpenChange(false)}
@@ -280,5 +303,43 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
         </Button>
       </ModalFooter>
     </Modal>
-  );
+
+    {/* Dialog de confirmación de eliminación */}
+    <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Eliminar clase</DialogTitle>
+          <DialogDescription>
+            Esta acción no se puede deshacer.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
+          <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0" />
+          <div>
+            <p className="text-gray-900 font-medium">
+              ¿Estás seguro de que deseas eliminar esta clase?
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={cancelDelete}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={confirmDelete}
+            disabled={isLoading}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {isLoading ? 'Eliminando...' : 'Eliminar'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </>);
 };
