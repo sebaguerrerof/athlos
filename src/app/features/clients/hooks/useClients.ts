@@ -18,7 +18,7 @@ export const useClients = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { tenant } = useAuth();
+  const { tenant, user } = useAuth();
 
   useEffect(() => {
     if (!tenant?.id) {
@@ -66,6 +66,11 @@ export const useClients = () => {
   const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
     if (!tenant?.id) throw new Error('No tenant ID');
 
+    // Validar que el correo del cliente no sea el mismo que el del tenant
+    if (user?.email && clientData.email.toLowerCase() === user.email.toLowerCase()) {
+      throw new Error('NO_PUEDE_CREAR_CLIENTE_CON_SU_PROPIO_EMAIL');
+    }
+
     const clientsRef = collection(db, 'tenants', tenant.id, 'clients');
     const now = Timestamp.now();
 
@@ -82,6 +87,11 @@ export const useClients = () => {
 
   const updateClient = async (clientId: string, updates: Partial<Omit<Client, 'id' | 'createdAt' | 'updatedAt'>>) => {
     if (!tenant?.id) throw new Error('No tenant ID');
+
+    // Validar que si se está actualizando el email, no sea el mismo que el del tenant
+    if (updates.email && user?.email && updates.email.toLowerCase() === user.email.toLowerCase()) {
+      throw new Error('NO_PUEDE_ACTUALIZAR_CLIENTE_CON_SU_PROPIO_EMAIL');
+    }
 
     const { doc, updateDoc } = await import('firebase/firestore');
     const clientRef = doc(db, 'tenants', tenant.id, 'clients', clientId);

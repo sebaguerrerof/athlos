@@ -19,7 +19,7 @@ import type { Payment, CreatePaymentData, UpdatePaymentData, PaymentStats } from
 export const usePayments = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-  const { tenant } = useAuth();
+  const { tenant, user } = useAuth();
 
   useEffect(() => {
     if (!tenant?.id) {
@@ -68,6 +68,11 @@ export const usePayments = () => {
       return null;
     }
 
+    if (!user?.uid) {
+      toast.error('Error', { description: 'Usuario no autenticado' });
+      return null;
+    }
+
     try {
       const paymentsRef = collection(db, 'tenants', tenant.id, 'payments');
       const now = Timestamp.now();
@@ -75,13 +80,16 @@ export const usePayments = () => {
       const paymentData = {
         tenantId: tenant.id,
         appointmentId: data.appointmentId,
-        clientId: data.clientId,
-        clientName: data.clientName,
+        clientId: data.clientId || user.uid,
+        clientName: data.clientName || user.displayName || 'Cliente',
         amount: data.amount,
         currency: 'CLP' as const,
-        provider: data.provider,
+        provider: data.provider || 'manual',
         method: data.method,
         status: 'pending' as const,
+        proofUrl: data.proofUrl || null,
+        proofStatus: data.proofStatus || null,
+        paymentToken: data.paymentToken || null,
         createdAt: now,
         updatedAt: now,
       };

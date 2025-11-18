@@ -119,7 +119,7 @@ export const useAppointments = () => {
       const docRef = await addDoc(appointmentsRef, appointmentData);
       console.log('✅ Appointment created with ID:', docRef.id);
       
-      return true;
+      return docRef.id; // Return the appointment ID
     } catch (error) {
       console.error('Error adding appointment:', error);
       throw error;
@@ -145,14 +145,17 @@ export const useAppointments = () => {
 
   const deleteAppointment = async (id: string) => {
     if (!tenant?.id) {
+      console.error('❌ No tenant ID when deleting appointment');
       throw new Error('No tenant ID');
     }
 
     try {
+      console.log(`🗑️ Deleting appointment ${id} for tenant ${tenant.id}`);
       const appointmentRef = doc(db, 'tenants', tenant.id, 'appointments', id);
       await deleteDoc(appointmentRef);
+      console.log(`✅ Appointment ${id} deleted successfully`);
     } catch (error) {
-      console.error('Error deleting appointment:', error);
+      console.error(`❌ Error deleting appointment ${id}:`, error);
       throw error;
     }
   };

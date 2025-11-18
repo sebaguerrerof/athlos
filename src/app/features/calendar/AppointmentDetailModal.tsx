@@ -2,14 +2,6 @@ import { useState } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Appointment, useAppointments } from './hooks/useAppointments';
 import { sportOptions } from '@/app/shared/types/sports';
 import { 
@@ -304,42 +296,58 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
       </ModalFooter>
     </Modal>
 
-    {/* Dialog de confirmación de eliminación */}
-    <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Eliminar clase</DialogTitle>
-          <DialogDescription>
-            Esta acción no se puede deshacer.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
-          <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0" />
-          <div>
-            <p className="text-gray-900 font-medium">
-              ¿Estás seguro de que deseas eliminar esta clase?
+    {/* Confirmation Modal for Delete */}
+    {showDeleteConfirm && (
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/50"
+          onClick={cancelDelete}
+        />
+
+        {/* Modal */}
+        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+          {/* Header */}
+          <div className="p-6 border-b">
+            <h2 className="text-xl font-semibold text-gray-900">Eliminar clase</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Esta acción no se puede deshacer.
             </p>
           </div>
+
+          {/* Content */}
+          <div className="p-6">
+            <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
+              <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0" />
+              <div>
+                <p className="text-gray-900 font-medium">
+                  ¿Estás seguro de que deseas eliminar esta clase?
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-6 border-t flex items-center justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={cancelDelete}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={confirmDelete}
+              disabled={isLoading}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isLoading ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </div>
         </div>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={cancelDelete}
-            disabled={isLoading}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={confirmDelete}
-            disabled={isLoading}
-            className="bg-red-600 hover:bg-red-700"
-          >
-            {isLoading ? 'Eliminando...' : 'Eliminar'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    )}
   </>);
 };

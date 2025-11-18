@@ -11,6 +11,9 @@ import { Calendar, Clock, User, UserPlus, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useClients } from '@/app/features/clients/hooks/useClients';
 import { useAppointments } from './hooks/useAppointments';
+import { useAvailability } from './hooks/useAvailability';
+import { usePaymentConfig } from '@/app/features/payments/hooks/usePaymentConfig';
+import { usePayments } from '@/app/features/payments/hooks/usePayments';
 import { useAuth } from '@/app/features/auth/AuthContext';
 import { useHistory } from 'react-router-dom';
 
@@ -40,7 +43,10 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   const [isRecurring, setIsRecurring] = useState(false);
   const { clients, loading: loadingClients } = useClients();
   const { addAppointment, appointments } = useAppointments();
-  const { tenant } = useAuth();
+  const { availabilities } = useAvailability();
+  const { config, getPrice } = usePaymentConfig();
+  const { addPayment } = usePayments();
+  const { tenant, user } = useAuth();
   const history = useHistory();
 
   // Filter sports to only show the ones the trainer offers
@@ -48,6 +54,107 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   const availableSports = sportOptions.filter(sport => 
     trainerSports.includes(sport.value)
   );
+
+  // Get active availabilities
+  const activeAvailabilities = availabilities.filter(av => av.isActive);
+  
+  // Get unique durations from availabilities, sorted
+  const availableDurations = Array.from(
+    new Set(activeAvailabilities.map(av => av.duration))
+  ).sort((a, b) => a - b).map(duration => ({
+    value: duration,
+    label: duration === 60 ? '1 hora' 
+      : duration === 90 ? '1 hora 30 min' 
+      : duration === 120 ? '2 horas'
+      : duration === 30 ? '30 minutos'
+      : duration === 45 ? '45 minutos'
+      : `${duration} minutos`
+  }));
+
+  // Get available days of week (0-6)
+  const availableDays = Array.from(
+    new Set(activeAvailabilities.map(av => av.dayOfWeek))
+  ).sort();
+
+  // Helper to get time slots for a specific date and duration (filtering occupied slots)
+  const getAvailableTimeSlots = (dateStr: string, duration: number) => {
+    if (!dateStr || !duration) return [];
+    
+    const date = new Date(dateStr + 'T00:00:00');
+    const dayOfWeek = date.getDay();
+    
+    // Get availabilities for this day and duration
+    const dayAvailabilities = activeAvailabilities.filter(
+      av => av.dayOfWeek === dayOfWeek && av.duration === duration
+    );
+    
+    if (dayAvailabilities.length === 0) return [];
+    
+    // Generate time slots in 30-minute intervals
+    const slots: string[] = [];
+    
+    dayAvailabilities.forEach(av => {
+      const [startHour, startMin] = av.startTime.split(':').map(Number);
+      const [endHour, endMin] = av.endTime.split(':').map(Number);
+      
+      let currentHour = startHour;
+      let currentMin = startMin;
+      
+      while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
+        const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
+        
+        // Check if there's enough time for the duration
+        const currentMinutes = currentHour * 60 + currentMin;
+        const endMinutes = endHour * 60 + endMin;
+        
+        if (currentMinutes + duration <= endMinutes) {
+          // Check if this time slot conflicts with existing appointments
+          const slotEndMinutes = currentMinutes + duration;
+          
+          const hasConflict = appointments.some(apt => {
+            if (apt.date !== dateStr || apt.status === 'cancelled') return false;
+            
+            const [aptHours, aptMinutes] = apt.startTime.split(':').map(Number);
+            const aptStartMinutes = aptHours * 60 + aptMinutes;
+            const aptEndMinutes = aptStartMinutes + apt.duration;
+
+            // Check if slots overlap
+            return (
+              (currentMinutes >= aptStartMinutes && currentMinutes < aptEndMinutes) ||
+              (slotEndMinutes > aptStartMinutes && slotEndMinutes <= aptEndMinutes) ||
+              (currentMinutes <= aptStartMinutes && slotEndMinutes >= aptEndMinutes)
+            );
+          });
+
+          if (!hasConflict) {
+            slots.push(timeStr);
+          }
+        }
+        
+        // Increment by 30 minutes
+        currentMin += 30;
+        if (currentMin >= 60) {
+          currentMin = 0;
+          currentHour++;
+        }
+      }
+    });
+    
+    return Array.from(new Set(slots)).sort();
+  };
+
+  // Helper to check if a date is available
+  const isDateAvailable = (dateStr: string) => {
+    if (!dateStr) return false;
+    const date = new Date(dateStr + 'T00:00:00');
+    return availableDays.includes(date.getDay());
+  };
+
+  // Helper to get day name in Spanish
+  const getDayName = (dayOfWeek: number): string => {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    return days[dayOfWeek];
+  };
 
   const {
     register,
@@ -64,32 +171,80 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   });
 
   const selectedSport = watch('sportType');
+  const selectedDate = watch('date');
+  const selectedDuration = watch('duration');
+  
+  // Get available time slots for selected date and duration
+  const availableTimeSlots = selectedDate && selectedDuration 
+    ? getAvailableTimeSlots(selectedDate, selectedDuration)
+    : [];
+
+  // Helper function to create payment after appointment
+  const createPaymentForAppointment = async (
+    appointmentId: string,
+    clientData: any,
+    appointmentData: any
+  ) => {
+    if (!config) {
+      console.log('⚠️ No payment config found, skipping payment');
+      return;
+    }
+
+    // Calculate price
+    const price = getPrice(appointmentData.sportType, appointmentData.duration, appointmentData.startTime);
+    
+    if (!price || price === 0) {
+      console.log('⚠️ No price found for this appointment');
+      return;
+    }
+
+    // Generate unique token
+    const paymentToken = `${appointmentId}_${Date.now()}`;
+
+    try {
+      // Create payment
+      await addPayment({
+        appointmentId,
+        clientId: appointmentData.clientId,
+        clientName: clientData.name,
+        amount: price,
+        provider: config.provider || 'manual',
+        method: 'transfer',
+        proofUrl: null,
+        proofStatus: null,
+        paymentToken,
+      });
+
+      console.log('✅ Payment created with token:', paymentToken);
+
+      // TODO: When Cloud Functions are deployed, they will send the email automatically
+      // For now, show a toast notification
+      if (clientData.email) {
+        toast.success('Email enviado', {
+          description: `Se envió un email a ${clientData.email} con el link de pago`,
+          duration: 5000,
+        });
+        console.log('📧 Email would be sent to:', clientData.email);
+        console.log('🔗 Payment link:', `${window.location.origin}/payment/${paymentToken}`);
+      } else {
+        toast.warning('Cliente sin email', {
+          description: 'El cliente no tiene email configurado para recibir el link de pago',
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error creating payment:', error);
+    }
+  };
 
   const onSubmit = async (data: AppointmentFormData) => {
     setIsLoading(true);
     try {
-      // Validar horario disponible
-      const [hours, minutes] = data.startTime.split(':').map(Number);
-      const startMinutes = hours * 60 + minutes;
-      const endMinutes = startMinutes + data.duration;
-
-      const hasConflict = appointments.some(apt => {
-        if (apt.date !== data.date || apt.status === 'cancelled') return false;
-        
-        const [aptHours, aptMinutes] = apt.startTime.split(':').map(Number);
-        const aptStartMinutes = aptHours * 60 + aptMinutes;
-        const aptEndMinutes = aptStartMinutes + apt.duration;
-
-        return (
-          (startMinutes >= aptStartMinutes && startMinutes < aptEndMinutes) ||
-          (endMinutes > aptStartMinutes && endMinutes <= aptEndMinutes) ||
-          (startMinutes <= aptStartMinutes && endMinutes >= aptEndMinutes)
-        );
-      });
-
-      if (hasConflict) {
-        toast.error('Horario ocupado', {
-          description: 'Ya tienes una clase programada en ese horario',
+      // Validar que el día tenga disponibilidad
+      if (!isDateAvailable(data.date)) {
+        const date = new Date(data.date + 'T00:00:00');
+        const dayName = getDayName(date.getDay());
+        toast.error('Día sin disponibilidad', {
+          description: `No tienes horarios disponibles los ${dayName}s. Por favor selecciona otro día.`,
         });
         setIsLoading(false);
         return;
@@ -118,6 +273,11 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
           currentDate.setDate(currentDate.getDate() + 1);
         }
 
+        // Calcular minutos para validación de conflictos
+        const [hours, minutes] = data.startTime.split(':').map(Number);
+        const startMinutes = hours * 60 + minutes;
+        const endMinutes = startMinutes + data.duration;
+
         // Crear todas las clases
         let createdCount = 0;
         for (const dateStr of datesToCreate) {
@@ -135,7 +295,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
           });
 
           if (!dateHasConflict) {
-            await addAppointment({
+            const appointmentId = await addAppointment({
               clientId: data.clientId,
               clientName: client.name,
               sportType: data.sportType,
@@ -145,6 +305,17 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
               notes: data.notes,
               recurringGroupId,
             });
+            
+            // Create payment for each recurring appointment
+            if (appointmentId) {
+              await createPaymentForAppointment(appointmentId, client, {
+                clientId: data.clientId,
+                sportType: data.sportType,
+                duration: data.duration,
+                startTime: data.startTime,
+              });
+            }
+            
             createdCount++;
           }
         }
@@ -154,7 +325,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
         });
       } else {
         // Crear clase única
-        await addAppointment({
+        const appointmentId = await addAppointment({
           clientId: data.clientId,
           clientName: client.name,
           sportType: data.sportType,
@@ -163,6 +334,16 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
           duration: data.duration,
           notes: data.notes,
         });
+        
+        // Create payment for the appointment
+        if (appointmentId) {
+          await createPaymentForAppointment(appointmentId, client, {
+            clientId: data.clientId,
+            sportType: data.sportType,
+            duration: data.duration,
+            startTime: data.startTime,
+          });
+        }
         
         toast.success('Clase creada', {
           description: `Clase de ${availableSports.find(s => s.value === data.sportType)?.label} programada con ${client.name}`,
@@ -185,14 +366,6 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
     onOpenChange(false);
     history.push('/clients');
   };
-
-  const durations = [
-    { value: 30, label: '30 minutos' },
-    { value: 45, label: '45 minutos' },
-    { value: 60, label: '1 hora' },
-    { value: 90, label: '1 hora 30 min' },
-    { value: 120, label: '2 horas' },
-  ];
 
   // Si no hay clientes, mostrar CTA
   if (!loadingClients && clients.length === 0) {
@@ -299,8 +472,17 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
           )}
         </div>
 
-        {/* Date and Time */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Date, Duration and Time - Optimized Layout */}
+        {availableDays.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+            <p className="text-xs text-blue-700">
+              📅 Disponible: <span className="font-medium">{availableDays.map(day => getDayName(day)).join(', ')}</span>
+            </p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 gap-4">
+          {/* Date */}
           <div className="space-y-2">
             <Label htmlFor="date">
               Fecha <span className="text-red-500">*</span>
@@ -311,52 +493,125 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                 id="date"
                 type="date"
                 {...register('date')}
-                disabled={isLoading}
+                disabled={isLoading || availableDays.length === 0}
                 className="pl-10"
                 min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  const dateValue = e.target.value;
+                  setValue('date', dateValue);
+                  setValue('startTime', '');
+                  
+                  if (dateValue && !isDateAvailable(dateValue)) {
+                    toast.warning('Día sin disponibilidad', {
+                      description: 'Este día no tiene horarios disponibles. Por favor selecciona otro día.',
+                    });
+                  }
+                }}
               />
             </div>
             {errors.date && (
-              <p className="text-sm text-red-500">{errors.date.message}</p>
+              <p className="text-xs text-red-500">{errors.date.message}</p>
             )}
           </div>
 
+          {/* Duration */}
+          <div className="space-y-2">
+            <Label htmlFor="duration">
+              Duración <span className="text-red-500">*</span>
+            </Label>
+            <select
+              id="duration"
+              {...register('duration', { valueAsNumber: true })}
+              disabled={isLoading}
+              className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
+              onChange={(e) => {
+                setValue('duration', Number(e.target.value));
+                setValue('startTime', '');
+              }}
+            >
+              <option value="">Duración</option>
+              {availableDurations.map((duration) => (
+                <option key={duration.value} value={duration.value}>
+                  {duration.label}
+                </option>
+              ))}
+            </select>
+            {errors.duration && (
+              <p className="text-xs text-red-500">{errors.duration.message}</p>
+            )}
+          </div>
+
+          {/* Time */}
           <div className="space-y-2">
             <Label htmlFor="startTime">
               Hora <span className="text-red-500">*</span>
             </Label>
-            <div className="relative">
-              <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              <Input
+            {availableTimeSlots.length > 0 ? (
+              <select
                 id="startTime"
-                type="time"
                 {...register('startTime')}
-                disabled={isLoading}
-                className="pl-10"
-              />
-            </div>
+                disabled={isLoading || !selectedDate || !selectedDuration}
+                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
+                size={1}
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 0.5rem center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: '1.5em 1.5em',
+                  paddingRight: '2.5rem',
+                  appearance: 'none'
+                }}
+              >
+                <option value="">Selecciona hora</option>
+                {availableTimeSlots.map((time) => (
+                  <option key={time} value={time}>
+                    {time} hs
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                <Input
+                  id="startTime"
+                  type="time"
+                  {...register('startTime')}
+                  disabled={isLoading}
+                  className="pl-10"
+                />
+              </div>
+            )}
             {errors.startTime && (
-              <p className="text-sm text-red-500">{errors.startTime.message}</p>
+              <p className="text-xs text-red-500">{errors.startTime.message}</p>
             )}
           </div>
         </div>
 
-        {/* Duration */}
-        <div className="space-y-2">
-          <Label htmlFor="duration">Duración</Label>
-          <select
-            id="duration"
-            {...register('duration', { valueAsNumber: true })}
-            disabled={isLoading}
-            className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {durations.map((duration) => (
-              <option key={duration.value} value={duration.value}>
-                {duration.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Validation Messages */}
+        {availableDays.length === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <p className="text-sm text-amber-700 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              No tienes disponibilidad configurada
+            </p>
+          </div>
+        )}
+        {selectedDate && !isDateAvailable(selectedDate) && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <p className="text-sm text-red-700 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              ⚠️ No tienes disponibilidad este día ({getDayName(new Date(selectedDate + 'T00:00:00').getDay())})
+            </p>
+          </div>
+        )}
+        {selectedDate && selectedDuration && availableTimeSlots.length === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <p className="text-sm text-amber-700 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              No hay horarios disponibles para esta combinación
+            </p>
+          </div>
+        )}
 
         {/* Recurring Toggle */}
         <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">

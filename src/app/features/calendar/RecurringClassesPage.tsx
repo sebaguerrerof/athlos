@@ -2,22 +2,16 @@ import { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/app/layouts/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Modal, ModalFooter } from '@/components/ui/modal';
 import { useAppointments } from './hooks/useAppointments';
 import { sportOptions } from '@/app/shared/types/sports';
 import { Repeat, Trash2, Calendar, Clock, User, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 export const RecurringClassesPage: React.FC = () => {
   const { appointments, deleteAppointment, loading } = useAppointments();
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Agrupar clases por recurringGroupId
   const recurringGroups = useMemo(() => {
@@ -47,25 +41,58 @@ export const RecurringClassesPage: React.FC = () => {
   }, [appointments]);
 
   const handleDeleteGroup = async (groupId: string) => {
-    setDeletingGroupId(null);
-    
     const group = recurringGroups.find(g => g.groupId === groupId);
-    if (!group) return;
+    if (!group) {
+      console.log('❌ Group not found:', groupId);
+      return;
+    }
+
+    setIsDeleting(true);
+    console.log('🗑️ Starting deletion of group:', groupId);
+    console.log('📊 Group info:', group);
 
     try {
       // Eliminar solo las clases programadas (no las completadas)
       const scheduledClasses = group.classes.filter(c => c.status === 'scheduled');
+      console.log(`📅 Clases programadas a eliminar: ${scheduledClasses.length}`, scheduledClasses.map(c => ({ id: c.id, date: c.date })));
       
-      for (const apt of scheduledClasses) {
-        await deleteAppointment(apt.id);
+      if (scheduledClasses.length === 0) {
+        toast.info('Sin clases para eliminar', {
+          description: 'No hay clases programadas en esta serie',
+        });
+        setDeletingGroupId(null);
+        setIsDeleting(false);
+        return;
       }
 
+      // Eliminar una por una para mejor tracking
+      let deletedCount = 0;
+      for (const apt of scheduledClasses) {
+        try {
+          console.log(`🗑️ Eliminando clase ${apt.id} (${apt.date})`);
+          await deleteAppointment(apt.id);
+          deletedCount++;
+          console.log(`✅ Clase eliminada: ${apt.id}`);
+        } catch (error) {
+          console.error(`❌ Error eliminando clase ${apt.id}:`, error);
+          throw error;
+        }
+      }
+
+      console.log(`✅ Total eliminadas: ${deletedCount}/${scheduledClasses.length}`);
+      
       toast.success('Clases eliminadas', {
-        description: `Se eliminaron ${scheduledClasses.length} clases programadas`,
+        description: `Se eliminaron ${deletedCount} clases programadas`,
       });
+      
+      setDeletingGroupId(null);
     } catch (error) {
-      console.error('Error deleting recurring classes:', error);
-      toast.error('Error al eliminar clases recurrentes');
+      console.error('❌ Error deleting recurring classes:', error);
+      toast.error('Error al eliminar clases recurrentes', {
+        description: error instanceof Error ? error.message : 'Error desconocido',
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -209,15 +236,15 @@ export const RecurringClassesPage: React.FC = () => {
           </div>
         )}
 
-        {/* Dialog de confirmación de eliminación */}
-        <Dialog open={deletingGroupId !== null} onOpenChange={(open) => !open && setDeletingGroupId(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Eliminar serie de clases</DialogTitle>
-              <DialogDescription>
-                Se eliminarán todas las clases programadas de esta serie. Las clases completadas no se eliminarán.
-              </DialogDescription>
-            </DialogHeader>
+        {/* Modal de confirmación de eliminación */}
+        <Modal
+          isOpen={deletingGroupId !== null}
+          onClose={() => !isDeleting && setDeletingGroupId(null)}
+          title="Eliminar serie de clases"
+          description="Se eliminarán todas las clases programadas de esta serie. Las clases completadas no se eliminarán."
+          size="md"
+        >
+          <div className="space-y-4">
             <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
               <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0" />
               <div>
@@ -229,24 +256,39 @@ export const RecurringClassesPage: React.FC = () => {
                 </p>
               </div>
             </div>
-            <DialogFooter>
+
+            <ModalFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setDeletingGroupId(null)}
+                disabled={isDeleting}
               >
                 Cancelar
               </Button>
               <Button
                 type="button"
-                onClick={() => deletingGroupId && handleDeleteGroup(deletingGroupId)}
-                className="bg-red-600 hover:bg-red-700"
+                onClick={() => {
+                  console.log('🔘 Button clicked, deletingGroupId:', deletingGroupId);
+                  if (deletingGroupId) {
+                    handleDeleteGroup(deletingGroupId);
+                  }
+                }}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Eliminar serie
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Eliminando...
+                  </>
+                ) : (
+                  'Eliminar serie'
+                )}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </ModalFooter>
+          </div>
+        </Modal>
       </div>
     </DashboardLayout>
   );

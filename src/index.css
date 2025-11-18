@@ -54,3 +54,16 @@
     animation-delay: 400ms;
   }
 }
+
+/* Custom select dropdown styles */
+@layer components {
+  /* Style for time slot select dropdown with limited height */
+  select#startTime {
+    max-height: 40px;
+  }
+  
+  /* Limit dropdown menu height when opened */
+  select#startTime option {
+    padding: 8px 12px;
+  }
+}

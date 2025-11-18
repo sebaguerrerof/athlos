@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Mail, Phone, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { useClients } from './hooks/useClients';
+import { useAuth } from '../auth/AuthContext';
 
 const clientSchema = z.object({
   name: z
@@ -40,6 +41,7 @@ export const NewClientModal: React.FC<NewClientModalProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { addClient } = useClients();
+  const { user } = useAuth();
 
   const {
     register,
@@ -54,6 +56,15 @@ export const NewClientModal: React.FC<NewClientModalProps> = ({
   const onSubmit = async (data: ClientFormData) => {
     setIsLoading(true);
     try {
+      // Validar que el correo del cliente no sea el mismo que el del tenant
+      if (user?.email && data.email.toLowerCase() === user.email.toLowerCase()) {
+        toast.error('Correo inválido', {
+          description: 'No puedes crear un cliente con tu propio correo electrónico',
+        });
+        setIsLoading(false);
+        return;
+      }
+
       await addClient({
         name: data.name,
         email: data.email,

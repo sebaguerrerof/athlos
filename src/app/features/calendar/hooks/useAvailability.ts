@@ -45,6 +45,7 @@ export const useAvailability = () => {
             startTime: data.startTime,
             endTime: data.endTime,
             duration: data.duration,
+            priceType: data.priceType || undefined, // 'low' | 'high' | undefined
             isActive: data.isActive !== false, // Default to true
             createdAt: data.createdAt?.toDate() || new Date(),
             updatedAt: data.updatedAt?.toDate() || new Date(),
@@ -75,6 +76,7 @@ export const useAvailability = () => {
       startTime: availabilityData.startTime,
       endTime: availabilityData.endTime,
       duration: availabilityData.duration,
+      priceType: availabilityData.priceType || null,
       isActive: availabilityData.isActive,
       createdAt: now,
       updatedAt: now,

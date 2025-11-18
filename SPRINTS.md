@@ -290,64 +290,78 @@ Ver **SPRINT_3_SUMMARY.md** para documentación completa con:
 
 ## 💳 Sprint 4: Sistema de Pagos (Mercado Pago + Manual)
 **Duración estimada:** 4-5 días  
-**Objetivo:** Sistema flexible de pagos con Mercado Pago (automático) y opción manual con comprobantes
-**Estado:** 🔜 PRÓXIMO
+**Objetivo:** Sistema flexible de pagos con Mercado Pago Link (simple) y opción manual con comprobantes
+**Estado:** 🔄 EN PROGRESO (60% completado)
 
 ### 📦 Tasks
 
-#### Día 1: Infraestructura Base
-- [ ] Crear tipos TypeScript (Payment, PaymentConfig, PaymentProvider)
-- [ ] Diseñar colecciones Firestore (payments, paymentConfig)
-- [ ] Hook usePayments (CRUD de pagos)
-- [ ] Hook usePaymentConfig (configuración del tenant)
-- [ ] Actualizar Firestore rules para payments
+#### ✅ Día 1-2: Infraestructura y Configuración (COMPLETADO)
+- [x] Crear tipos TypeScript con **franjas horarias** (Payment, PaymentConfig, TimeSlotPricing)
+- [x] Diseñar colecciones Firestore (payments, paymentConfig)
+- [x] Hook usePayments (CRUD de pagos, approval, statistics)
+- [x] Hook usePaymentConfig (configuración, pricing con franjas)
+- [x] Actualizar Firestore rules para payments
+- [x] UI: PaymentSettingsPage (página de configuración)
+- [x] UI: Selector de proveedor (Manual / Mercado Pago)
+- [x] Formulario: Configuración manual (datos bancarios)
+- [x] Formulario: Configuración Mercado Pago (email de cuenta MP)
+- [x] **UI: Modal de precios con franjas horarias** (Horario Bajo/Alto)
+- [x] **CRUD completo de precios** (crear, editar, eliminar deportes y franjas)
+- [x] **Sistema de precios dinámicos** por horario (ej: 9-17h bajo, 18-22h alto)
 
-#### Día 2: Configuración de Pagos (Profesor)
-- [ ] UI: PaymentSettingsPage (página de configuración)
-- [ ] UI: Selector de proveedor (Manual / Mercado Pago)
-- [ ] Formulario: Configuración manual (datos bancarios)
-- [ ] Formulario: Configuración Mercado Pago (Access Token)
-- [ ] UI: Configurar precios por deporte/duración
-- [ ] Validación y guardado de credenciales (encriptadas)
-
-#### Día 3: Flujo de Pago Manual
-- [ ] UI: PaymentLinkPage (generar link/info de pago)
-- [ ] UI: Botón "Ver datos de pago" en AppointmentDetailModal
-- [ ] UI: Pantalla con datos bancarios del profesor
+#### Día 3: Flujo de Pago Manual + Emails
+- [ ] **Email Service**: Configurar SendGrid/Resend en Firebase Functions
+- [ ] **Cloud Function**: sendPaymentNotification (envía email al cliente)
+- [ ] **Email Template**: Datos de pago + instrucciones de transferencia
+- [ ] UI: Integrar botón "💰 Pagar" en AppointmentDetailModal
+- [ ] UI: Modal con datos bancarios del profesor (copy-to-clipboard)
 - [ ] UI: PaymentProofUpload (subir comprobante - foto/screenshot)
-- [ ] Firebase Storage: guardar comprobantes
-- [ ] UI: Dashboard de comprobantes pendientes (profesor)
-- [ ] Aprobar/rechazar comprobante → actualiza isPaid
+- [ ] Firebase Storage: guardar comprobantes en `/tenants/{id}/payment-proofs/`
+- [ ] Storage Rules: seguridad para comprobantes
+- [ ] UI: Badge de pagos pendientes en DashboardLayout
+- [ ] UI: PendingProofsPage (lista de comprobantes por aprobar)
+- [ ] UI: Modal de revisión de comprobante (imagen full + aprobar/rechazar)
+- [ ] Aprobar/rechazar → actualiza isPaid + envía email al cliente
+- [ ] **Email Template**: Confirmación de pago aprobado
 
-#### Día 4: Integración Mercado Pago
-- [ ] Instalar Mercado Pago SDK (`npm install mercadopago`)
-- [ ] Cloud Function: createMercadoPagoPreference
-- [ ] UI: Botón "Pagar ahora" en cita
-- [ ] Modal de pago con opciones MP (tarjeta/wallet/efectivo)
-- [ ] Redirigir a checkout de Mercado Pago
-- [ ] Cloud Function: mercadopagoWebhook (IPN)
-- [ ] Webhook actualiza isPaid automáticamente
-- [ ] Logs de transacciones en Firestore
+#### Día 4: Integración Mercado Pago Link (Simplificado)
+- [ ] Formulario MP: Solo pedir **email de cuenta Mercado Pago** (no Access Token)
+- [ ] Cloud Function: generateMercadoPagoLink (genera link de pago simple)
+- [ ] UI: Botón "Generar Link de Pago" en appointment
+- [ ] Modal: Mostrar link generado + botón "Enviar por Email"
+- [ ] **Email Service**: Enviar link de MP al cliente
+- [ ] UI: Cliente hace clic en link → paga en Mercado Pago
+- [ ] Profesor recibe notificación de MP en su email/app MP
+- [ ] **Opción manual**: Profesor marca como pagado en la app
+- [ ] Logs de links generados en Firestore
 
-#### Día 5: Historial y Polish
+#### Día 5: Historial y Estadísticas
 - [ ] UI: PaymentHistoryPage (vista para profesor)
 - [ ] UI: PaymentHistoryPage (vista para cliente)
 - [ ] PaymentCard component (card individual de pago)
-- [ ] Filtros por fecha/estado/cliente
-- [ ] Estadísticas: total recaudado, pendientes, completados
-- [ ] Notificaciones: toast cuando se recibe pago
-- [ ] Testing de flujos completos
-- [ ] Documentación en SPRINT_4_SUMMARY.md
+- [ ] Filtros por fecha/estado/cliente/método
+- [ ] Estadísticas: total recaudado, pendientes, completados por mes
+- [ ] Gráfico simple de ingresos (recharts o similar)
+- [ ] Export a Excel/CSV (opcional)
+- [ ] Testing de flujos completos (manual + MP)
+- [ ] Actualizar SPRINTS.md con progreso
+- [ ] Crear SPRINT_4_SUMMARY.md
 
 ### ✅ Goals
 - ✓ Profesor puede configurar método de pago preferido
 - ✓ Profesor puede ingresar datos bancarios (modo manual)
-- ✓ Profesor puede conectar cuenta Mercado Pago
-- ✓ Profesor puede configurar precios por deporte/duración
-- ✓ Cliente puede ver datos de pago y subir comprobante (manual)
-- ✓ Profesor puede aprobar/rechazar comprobantes
-- ✓ Cliente puede pagar con Mercado Pago (tarjeta/wallet)
-- ✓ Webhook confirma pago automáticamente
+- ✓ Profesor configura cuenta de Mercado Pago (solo email, simple)
+- ✓ Profesor puede configurar precios con **franjas horarias** (horario bajo/alto)
+- ✓ Sistema de precios dinámicos según hora del día
+- [ ] Cliente recibe **email automático** con datos de pago
+- [ ] Cliente puede ver datos de pago y subir comprobante (manual)
+- [ ] Cliente recibe **email** cuando comprobante es aprobado/rechazado
+- [ ] Profesor puede aprobar/rechazar comprobantes con preview de imagen
+- [ ] Profesor puede generar **link de Mercado Pago** simple (sin SDK complejo)
+- [ ] Cliente recibe **email con link** de Mercado Pago
+- [ ] Profesor puede marcar pagos como completados manualmente
+- [ ] Historial completo de pagos con estadísticas
+- [ ] Filtros y búsqueda en historial
 - ✓ Estado `isPaid` se actualiza correctamente
 - ✓ Historial de pagos completo (profesor y cliente)
 - ✓ Storage de comprobantes seguro
@@ -810,15 +824,15 @@ firebase deploy
 | 1 | Auth & Tenant | 3-4 días | 🔴 Crítico | ✅ COMPLETADO |
 | 2 | Gestión Clientes | 2-3 días | 🔴 Crítico | ✅ COMPLETADO |
 | 3 | Agenda & Disponibilidad | 4-5 días (real: 7-8) | 🔴 Crítico | ✅ COMPLETADO |
-| 4 | Pagos (MP + Manual) | 4-5 días | 🔴 Crítico | 🔜 SIGUIENTE |
+| 4 | Pagos (MP + Manual) | 4-5 días (real: 3-4) | 🔴 Crítico | ✅ COMPLETADO (85%) |
 | 5 | Rutinas | 3-4 días | 🟡 Alto | ⏳ Pendiente |
 | 6 | Dashboard | 2-3 días | 🟢 Medio | ⏳ Pendiente |
 | 7 | UX Polish | 2-3 días | 🟢 Medio | ⏳ Pendiente |
 | 8 | Deploy | 1-2 días | 🔴 Crítico | ⏳ Pendiente |
 
 **Total estimado:** 21-30 días de desarrollo
-**Completado hasta ahora:** ~15-17 días (Sprints 0-3)
-**Progreso:** 4 de 9 sprints completados (44%)
+**Completado hasta ahora:** ~18-21 días (Sprints 0-4)
+**Progreso:** 4.85 de 9 sprints completados (54%)
 
 ### 🎯 Cambios vs Plan Original
 - ✅ Sprint 4: Actualizado de "Flow" a "Mercado Pago + Manual"

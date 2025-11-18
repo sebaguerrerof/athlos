@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Plus } from 'lucide-react';
 import { NewAppointmentModal } from './NewAppointmentModal';
 import { AppointmentDetailModal } from './AppointmentDetailModal';
+import { SetupRequirementBanner } from './SetupRequirementBanner';
 import { useAppointments, Appointment } from './hooks/useAppointments';
+import { useClients } from '@/app/features/clients/hooks/useClients';
+import { usePaymentConfig } from '@/app/features/payments/hooks/usePaymentConfig';
 import { sportOptions } from '@/app/shared/types/sports';
 
 export const CalendarPage: React.FC = () => {
@@ -13,6 +16,13 @@ export const CalendarPage: React.FC = () => {
   const [showNewAppointmentModal, setShowNewAppointmentModal] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
   const { appointments, loading } = useAppointments();
+  const { clients } = useClients();
+  const { config } = usePaymentConfig();
+
+  // Check if setup is complete
+  const hasClients = clients.length > 0;
+  const hasPaymentConfig = !!config && !!config.pricing && Object.keys(config.pricing).length > 0;
+  const setupComplete = hasClients && hasPaymentConfig;
 
   console.log('🗓️ CalendarPage - Appointments:', appointments.length, 'Loading:', loading);
 
@@ -51,6 +61,9 @@ export const CalendarPage: React.FC = () => {
   }, [appointments, currentDate]);
 
   const handleOpenModal = () => {
+    if (!setupComplete) {
+      return; // Banner will show the required actions
+    }
     console.log('Abriendo modal de nueva clase...');
     setShowNewAppointmentModal(true);
   };
@@ -132,12 +145,15 @@ export const CalendarPage: React.FC = () => {
             <Button variant="outline" onClick={goToToday}>
               Hoy
             </Button>
-            <Button onClick={handleOpenModal}>
+            <Button onClick={handleOpenModal} disabled={!setupComplete}>
               <Plus className="h-4 w-4 mr-2" />
               Nueva Clase
             </Button>
           </div>
         </div>
+
+        {/* Setup Requirement Banner */}
+        <SetupRequirementBanner />
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

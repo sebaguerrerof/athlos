@@ -11,6 +11,7 @@ import { RecurringClassesPage } from './app/features/calendar/RecurringClassesPa
 import { AvailabilitySettings } from './app/features/calendar/AvailabilitySettings';
 import { ClientListPage } from './app/features/clients/ClientListPage';
 import { PaymentSettingsPage } from './app/features/payments/PaymentSettingsPage';
+import { PublicPaymentPage } from './app/features/payments/PublicPaymentPage';
 import { OnboardingPage } from './app/features/onboarding/OnboardingPage';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -22,6 +23,7 @@ const App: React.FC = () => (
         <Route exact path="/login" component={LoginPage} />
         <Route exact path="/register" component={RegisterPage} />
         <Route exact path="/reset-password" component={ResetPasswordPage} />
+        <Route exact path="/payment/:token" component={PublicPaymentPage} />
 
         {/* Onboarding Route (requires auth but not onboarding completion) */}
         <PrivateRoute exact path="/onboarding" component={OnboardingPage} />

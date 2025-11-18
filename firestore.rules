@@ -88,7 +88,13 @@ service cloud.firestore {
       
       // Payments subcollection
       match /payments/{paymentId} {
+        // Allow read/write for tenant members
         allow read, create, update, delete: if belongsToTenant(tenantId);
+        
+        // Allow public read/update with valid payment token (for public payment page)
+        allow read: if resource.data.paymentToken == request.query.token;
+        allow update: if resource.data.paymentToken == request.query.token && 
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['proofUrl', 'proofStatus', 'updatedAt']);
       }
       
       // Routines subcollection

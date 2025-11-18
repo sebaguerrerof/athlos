@@ -7,16 +7,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Clock, Calendar as CalendarIcon, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Clock, Calendar as CalendarIcon, AlertTriangle, TrendingUp, TrendingDown, DollarSign, Users, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAvailability } from './hooks/useAvailability';
 import { Availability } from './types';
+import { usePaymentConfig } from '../payments/hooks/usePaymentConfig';
+import { useAuth } from '../auth/AuthContext';
+import type { PriceByParticipants } from '../payments/types';
 
 const availabilitySchema = z.object({
   selectedDays: z.array(z.number()).min(1, 'Selecciona al menos un día'),
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Formato HH:mm'),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Formato HH:mm'),
   selectedDurations: z.array(z.number()).min(1, 'Selecciona al menos una duración'),
+  priceType: z.enum(['low', 'high', 'none']).optional(),
 }).refine(data => data.endTime > data.startTime, {
   message: 'La hora de fin debe ser mayor que la de inicio',
   path: ['endTime'],
@@ -45,7 +49,17 @@ export const AvailabilitySettings: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDurations, setSelectedDurations] = useState<number[]>([]);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [priceType, setPriceType] = useState<'low' | 'high' | 'none'>('none');
+  const [showPricing, setShowPricing] = useState(false);
+  const [courtCost, setCourtCost] = useState<number>(0);
+  const [prices, setPrices] = useState<{ [duration: number]: PriceByParticipants }>({
+    60: { 1: 0, 2: 0, 3: 0, 4: 0 },
+    90: { 1: 0, 2: 0, 3: 0, 4: 0 },
+    120: { 1: 0, 2: 0, 3: 0, 4: 0 },
+  });
   const { availabilities, loading, addAvailability, deleteAvailability, updateAvailability } = useAvailability();
+  const { config, updatePricing } = usePaymentConfig();
+  const { tenant } = useAuth();
 
   const {
     register,
@@ -61,6 +75,7 @@ export const AvailabilitySettings: React.FC = () => {
       startTime: '09:00',
       endTime: '18:00',
       selectedDurations: [60],
+      priceType: 'none',
     },
   });
 
@@ -110,6 +125,12 @@ export const AvailabilitySettings: React.FC = () => {
 
   const onSubmit = async (data: AvailabilityFormData) => {
     setIsLoading(true);
+    
+    const totalBlocks = data.selectedDays.length * data.selectedDurations.length;
+    const loadingToast = toast.loading(`Creando ${totalBlocks} bloques de disponibilidad...`, {
+      description: 'Por favor espera',
+    });
+    
     try {
       // Crear disponibilidad para cada combinación de día y duración
       for (const dayOfWeek of data.selectedDays) {
@@ -119,27 +140,77 @@ export const AvailabilitySettings: React.FC = () => {
             startTime: data.startTime,
             endTime: data.endTime,
             duration,
+            priceType: priceType !== 'none' ? priceType : undefined,
             isActive: true,
           });
         }
       }
       
-      const daysNames = data.selectedDays
-        .map(d => daysOfWeek.find(day => day.value === d)?.label)
-        .join(', ');
-      const durationsText = data.selectedDurations
-        .map(d => durationOptions.find(opt => opt.value === d)?.label)
-        .join(', ');
+      // Cerrar toast de loading
+      toast.dismiss(loadingToast);
       
-      toast.success('Disponibilidad agregada', {
-        description: `${data.selectedDays.length} días × ${data.selectedDurations.length} duraciones = ${data.selectedDays.length * data.selectedDurations.length} bloques creados`,
-      });
+      // Si se configuraron precios y hay deportes, actualizar configuración de precios
+      if (showPricing && priceType !== 'none' && tenant?.settings?.sports && tenant.settings.sports.length > 0) {
+        const currentPricing = config?.pricing || {};
+        const sportType = tenant.settings.sports[0]; // Usar el primer deporte configurado
+        
+        // Obtener slots existentes o crear array vacío
+        const existingSlots = currentPricing[sportType]?.timeSlots || [];
+        
+        // Buscar si ya existe un slot del mismo tipo
+        const existingSlotIndex = existingSlots.findIndex(slot => slot.type === priceType);
+        
+        if (existingSlotIndex >= 0) {
+          // Actualizar slot existente
+          existingSlots[existingSlotIndex] = {
+            ...existingSlots[existingSlotIndex],
+            startTime: data.startTime,
+            endTime: data.endTime,
+            courtCost,
+            prices,
+          };
+        } else {
+          // Agregar nuevo slot
+          existingSlots.push({
+            type: priceType as 'low' | 'high',
+            label: priceType === 'high' ? 'Horario Alto' : 'Horario Bajo',
+            startTime: data.startTime,
+            endTime: data.endTime,
+            courtCost,
+            prices,
+          });
+        }
+        
+        await updatePricing({
+          ...currentPricing,
+          [sportType]: {
+            timeSlots: existingSlots,
+          },
+        });
+        
+        toast.success('Disponibilidad y precios guardados', {
+          description: `${data.selectedDays.length} bloques creados con precios configurados`,
+        });
+      } else {
+        toast.success('Disponibilidad agregada', {
+          description: `${data.selectedDays.length} días × ${data.selectedDurations.length} duraciones = ${data.selectedDays.length * data.selectedDurations.length} bloques creados`,
+        });
+      }
       
       reset();
       setSelectedDays([]);
       setSelectedDurations([]);
+      setPriceType('none');
+      setShowPricing(false);
+      setCourtCost(0);
+      setPrices({
+        60: { 1: 0, 2: 0, 3: 0, 4: 0 },
+        90: { 1: 0, 2: 0, 3: 0, 4: 0 },
+        120: { 1: 0, 2: 0, 3: 0, 4: 0 },
+      });
       setIsAdding(false);
     } catch (error) {
+      toast.dismiss(loadingToast);
       console.error('Error al agregar disponibilidad:', error);
       toast.error('Error', {
         description: 'No se pudo agregar la disponibilidad',
@@ -338,6 +409,174 @@ export const AvailabilitySettings: React.FC = () => {
                 </div>
               </div>
 
+              {/* Price Type Selection */}
+              <div className="space-y-3">
+                <Label>Tipo de Horario (para precios)</Label>
+                <p className="text-sm text-gray-600">
+                  Clasifica este horario para configurar precios diferentes según demanda
+                </p>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPriceType('low');
+                      setValue('priceType', 'low');
+                    }}
+                    className={`p-4 rounded-lg border-2 text-sm font-medium transition-all ${
+                      priceType === 'low'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                    }`}
+                  >
+                    <TrendingDown className="h-5 w-5 mx-auto mb-1" />
+                    <div>Horario Bajo</div>
+                    <div className="text-xs opacity-70 mt-1">Menor demanda</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPriceType('high');
+                      setValue('priceType', 'high');
+                    }}
+                    className={`p-4 rounded-lg border-2 text-sm font-medium transition-all ${
+                      priceType === 'high'
+                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-orange-300'
+                    }`}
+                  >
+                    <TrendingUp className="h-5 w-5 mx-auto mb-1" />
+                    <div>Horario Alto</div>
+                    <div className="text-xs opacity-70 mt-1">Mayor demanda</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPriceType('none');
+                      setValue('priceType', 'none');
+                    }}
+                    className={`p-4 rounded-lg border-2 text-sm font-medium transition-all ${
+                      priceType === 'none'
+                        ? 'border-gray-500 bg-gray-50 text-gray-700'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    <Clock className="h-5 w-5 mx-auto mb-1" />
+                    <div>Sin clasificar</div>
+                    <div className="text-xs opacity-70 mt-1">Configurar después</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Pricing Configuration (Optional) */}
+              {priceType !== 'none' && tenant?.settings?.sports && tenant.settings.sports.length > 0 && (
+                <div className="space-y-4 border-t border-gray-200 pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-base font-semibold">Configurar Precios (Opcional)</Label>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Ahorra tiempo configurando precios ahora para: <strong>{tenant.settings.sports[0]}</strong>
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowPricing(!showPricing)}
+                    >
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      {showPricing ? 'Ocultar' : 'Mostrar'} Precios
+                    </Button>
+                  </div>
+
+                  {showPricing && (
+                    <Card className={`p-4 ${
+                      priceType === 'high' ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'
+                    }`}>
+                      {/* Court Cost */}
+                      <div className="mb-4">
+                        <Label className="text-sm font-medium mb-2 flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          Costo de Cancha
+                        </Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1000"
+                            value={courtCost}
+                            onChange={(e) => setCourtCost(parseInt(e.target.value) || 0)}
+                            className="pl-7 bg-white"
+                            placeholder="0"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {courtCost > 0 ? `$${courtCost.toLocaleString('es-CL')}` : 'Sin costo de cancha'}
+                        </p>
+                      </div>
+
+                      {/* Prices by Duration and Participants */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Precios por Duración y Participantes
+                        </Label>
+                        {selectedDurations.length > 0 ? (
+                          selectedDurations.sort((a, b) => a - b).map((duration) => (
+                            <div key={duration} className="border border-gray-300 rounded-lg p-3 bg-white">
+                              <Label className="text-xs font-semibold text-gray-700 mb-2 block">
+                                <Clock className="h-3 w-3 inline mr-1" />
+                                {duration} minutos
+                              </Label>
+                              <div className="grid grid-cols-4 gap-2">
+                                {[1, 2, 3, 4].map((participants) => (
+                                  <div key={participants}>
+                                    <Label className="text-[10px] text-gray-600 mb-1 block">
+                                      {participants === 4 ? '4+' : participants} {participants === 1 ? 'p' : 'p'}
+                                    </Label>
+                                    <div className="relative">
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">
+                                        $
+                                      </span>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="1000"
+                                        value={prices[duration]?.[participants] || 0}
+                                        onChange={(e) => {
+                                          const newPrices = { ...prices };
+                                          if (!newPrices[duration]) {
+                                            newPrices[duration] = { 1: 0, 2: 0, 3: 0, 4: 0 };
+                                          }
+                                          newPrices[duration][participants] = parseInt(e.target.value) || 0;
+                                          setPrices(newPrices);
+                                        }}
+                                        className="pl-5 text-xs h-8 bg-white"
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 italic">
+                            Selecciona duraciones arriba para configurar precios
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mt-4 p-3 bg-blue-100 border border-blue-300 rounded-lg">
+                        <p className="text-xs text-blue-900">
+                          💡 <strong>Tip:</strong> Estos precios se aplicarán automáticamente a {tenant.settings.sports[0]} en este horario {priceType === 'high' ? 'alto' : 'bajo'}
+                        </p>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"
@@ -393,16 +632,37 @@ export const AvailabilitySettings: React.FC = () => {
                       key={slot.id}
                       className={`transition-all ${
                         slot.isActive
-                          ? 'border-blue-200 bg-white'
+                          ? slot.priceType === 'high'
+                            ? 'border-orange-200 bg-orange-50'
+                            : slot.priceType === 'low'
+                            ? 'border-blue-200 bg-blue-50'
+                            : 'border-gray-200 bg-white'
                           : 'border-gray-200 bg-gray-50 opacity-60'
                       }`}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm font-medium">
-                              <Clock className="h-4 w-4 mr-2 text-blue-600" />
-                              {slot.startTime} - {slot.endTime}
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center text-sm font-medium">
+                                <Clock className="h-4 w-4 mr-2 text-blue-600" />
+                                {slot.startTime} - {slot.endTime}
+                              </div>
+                              {slot.priceType && (
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                    slot.priceType === 'high'
+                                      ? 'bg-orange-200 text-orange-800'
+                                      : 'bg-blue-200 text-blue-800'
+                                  }`}
+                                >
+                                  {slot.priceType === 'high' ? (
+                                    <><TrendingUp className="h-3 w-3 inline mr-1" />Alto</>
+                                  ) : (
+                                    <><TrendingDown className="h-3 w-3 inline mr-1" />Bajo</>
+                                  )}
+                                </span>
+                              )}
                             </div>
                             <p className="text-xs text-gray-500">
                               {slot.duration} min por clase

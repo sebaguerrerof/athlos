@@ -93,14 +93,20 @@ export const usePaymentConfig = () => {
           return false;
         }
 
-        configData.bankInfo = {
+        const bankInfo: any = {
           bank: formData.bank,
           accountType: formData.accountType || 'Cuenta Corriente',
           accountNumber: formData.accountNumber,
           rut: formData.rut,
           name: formData.accountName,
-          email: formData.email,
         };
+
+        // Only add email if it's provided (Firestore doesn't accept undefined)
+        if (formData.email) {
+          bankInfo.email = formData.email;
+        }
+
+        configData.bankInfo = bankInfo;
       }
 
       // Mercado Pago configuration
@@ -158,16 +164,45 @@ export const usePaymentConfig = () => {
   };
 
   const updatePricing = async (pricing: PricingConfig): Promise<boolean> => {
-    if (!tenant?.id || !config?.id) {
-      toast.error('Error', { description: 'No se encontró la configuración' });
+    if (!tenant?.id) {
+      toast.error('Error', { description: 'No se encontró el tenant' });
       return false;
     }
 
     try {
+      const now = Timestamp.now();
+
+      // If no config exists yet, create one with manual as default provider
+      if (!config?.id) {
+        console.log('📝 Creating new payment config with pricing...');
+        const configData = {
+          tenantId: tenant.id,
+          provider: 'manual' as const,
+          isActive: false, // Will be activated when they configure payment method
+          pricing,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        const configCollection = collection(db, 'tenants', tenant.id, 'paymentConfig');
+        const newConfigRef = doc(configCollection);
+        await setDoc(newConfigRef, configData);
+        
+        console.log('✅ Payment config created with pricing');
+        toast.success('Precios guardados', {
+          description: 'Ahora configura tu método de pago',
+        });
+
+        // Reload config
+        await loadConfig();
+        return true;
+      }
+
+      // Update existing config
       const configRef = doc(db, 'tenants', tenant.id, 'paymentConfig', config.id);
       await updateDoc(configRef, {
         pricing,
-        updatedAt: Timestamp.now(),
+        updatedAt: now,
       });
 
       console.log('✅ Pricing updated');
@@ -190,7 +225,8 @@ export const usePaymentConfig = () => {
   const getPrice = (
     sportType: string,
     duration: number,
-    appointmentTime?: string // HH:mm format
+    appointmentTime?: string, // HH:mm format
+    participants: number = 1 // Número de personas, default 1
   ): number | null => {
     if (!config?.pricing || !config.pricing[sportType]) return null;
 
@@ -198,7 +234,14 @@ export const usePaymentConfig = () => {
 
     // If no appointment time provided, return price from first time slot
     if (!appointmentTime) {
-      return sportConfig.timeSlots[0]?.prices[duration] || null;
+      const pricesByParticipants = sportConfig.timeSlots[0]?.prices[duration];
+      if (!pricesByParticipants) return null;
+      
+      // If old format (number), return it
+      if (typeof pricesByParticipants === 'number') return pricesByParticipants;
+      
+      // New format: return price for participants count (or max if not found)
+      return pricesByParticipants[participants] || pricesByParticipants[1] || null;
     }
 
     // Find matching time slot
@@ -206,7 +249,16 @@ export const usePaymentConfig = () => {
       return appointmentTime >= slot.startTime && appointmentTime < slot.endTime;
     });
 
-    return matchingSlot?.prices[duration] || null;
+    if (!matchingSlot) return null;
+
+    const pricesByParticipants = matchingSlot.prices[duration];
+    if (!pricesByParticipants) return null;
+
+    // If old format (number), return it
+    if (typeof pricesByParticipants === 'number') return pricesByParticipants;
+
+    // New format: return price for participants count (or max if not found)
+    return pricesByParticipants[participants] || pricesByParticipants[1] || null;
   };
 
   const hasConfig = (): boolean => {

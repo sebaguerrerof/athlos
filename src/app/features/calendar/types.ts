@@ -9,6 +9,7 @@ export interface Availability {
   startTime: string; // HH:mm format
   endTime: string; // HH:mm format
   duration: number; // minutes
+  priceType?: 'low' | 'high'; // Para diferenciar horarios de precio bajo y alto
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

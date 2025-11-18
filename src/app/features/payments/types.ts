@@ -42,13 +42,20 @@ export interface MercadoPagoConfig {
 
 export type TimeSlotType = 'low' | 'high'; // Horario bajo o alto
 
+export interface PriceByParticipants {
+  [participants: number]: number; // número de personas → precio en CLP
+  // Ejemplo: { 1: 30000, 2: 32000, 3: 34000, 4: 36000 }
+}
+
 export interface TimeSlotPricing {
   type: TimeSlotType;
   label: string;              // "Horario Bajo", "Horario Alto"
   startTime: string;          // HH:mm
   endTime: string;            // HH:mm
+  courtCost?: number;         // Costo de cancha (opcional)
   prices: {
-    [duration: number]: number; // duration en minutos → precio en CLP
+    [duration: number]: PriceByParticipants; // duration → participantes → precio
+    // Ejemplo: { 60: { 1: 30000, 2: 32000 }, 90: { 1: 45000, 2: 48000 } }
   };
 }
 
@@ -91,6 +98,8 @@ export interface Payment {
   method: PaymentMethod;
   status: PaymentStatus;
   
+  paymentToken?: string;             // Unique token for public payment access
+  
   // Mercado Pago specific fields
   externalId?: string | null;        // MP payment ID
   preferenceId?: string | null;      // MP preference ID
@@ -110,11 +119,14 @@ export interface Payment {
 
 export interface CreatePaymentData {
   appointmentId: string;
-  clientId: string;
-  clientName: string;
+  clientId?: string;
+  clientName?: string;
   amount: number;
-  provider: PaymentProvider;
+  provider?: PaymentProvider;
   method: PaymentMethod;
+  proofUrl?: string | null;
+  proofStatus?: ProofStatus | null;
+  paymentToken?: string;
 }
 
 export interface UpdatePaymentData {
