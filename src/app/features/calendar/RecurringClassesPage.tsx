@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Modal, ModalFooter } from '@/components/ui/modal';
 import { useAppointments } from './hooks/useAppointments';
 import { sportOptions } from '@/app/shared/types/sports';
-import { Repeat, Trash2, Calendar, Clock, User, AlertTriangle } from 'lucide-react';
+import { Repeat, Trash2, Calendar, Clock, User, AlertTriangle, Dumbbell } from 'lucide-react';
 import { toast } from 'sonner';
+import { useExercises } from '@/app/features/academies/hooks/useExercises';
 
 export const RecurringClassesPage: React.FC = () => {
   const { appointments, deleteAppointment, loading } = useAppointments();
+  const { exercises } = useExercises();
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -229,6 +231,38 @@ export const RecurringClassesPage: React.FC = () => {
                         )}
                       </div>
                     </div>
+
+                    {/* Ejercicios asignados */}
+                    {group.firstClass.exerciseIds && group.firstClass.exerciseIds.length > 0 && (
+                      <div className="mt-4 pt-4 border-t">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Dumbbell className="h-4 w-4 text-gray-500" />
+                          <p className="text-xs text-gray-500">Ejercicios asignados:</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {group.firstClass.exerciseIds.map((exerciseId) => {
+                            const exercise = exercises.find(ex => ex.id === exerciseId);
+                            if (!exercise) return null;
+                            return (
+                              <span
+                                key={exerciseId}
+                                className="inline-flex items-center px-2 py-1 rounded-md bg-purple-50 text-purple-700 text-xs"
+                              >
+                                {exercise.name}
+                                {exercise.category && (
+                                  <span className="ml-1 text-purple-500">•</span>
+                                )}
+                                {exercise.category === 'warm-up' && ' Calentamiento'}
+                                {exercise.category === 'drill' && ' Ejercicio'}
+                                {exercise.category === 'technique' && ' Técnica'}
+                                {exercise.category === 'game' && ' Juego'}
+                                {exercise.category === 'cool-down' && ' Enfriamiento'}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );

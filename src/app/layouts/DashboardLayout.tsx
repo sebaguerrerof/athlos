@@ -12,7 +12,12 @@ import {
   X,
   Dumbbell,
   CreditCard,
-  Repeat
+  Repeat,
+  GraduationCap,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  UsersRound
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -21,14 +26,21 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+interface SubNavItem {
+  label: string;
+  path: string;
+}
+
 interface NavItem {
   label: string;
   icon: React.ElementType;
-  path: string;
+  path?: string;
+  subItems?: SubNavItem[];
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [academiesOpen, setAcademiesOpen] = useState(false);
   const { user, tenant, logout } = useAuth();
   const history = useHistory();
   const location = useLocation();
@@ -39,7 +51,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     { label: 'Clases Recurrentes', icon: Repeat, path: '/recurring-classes' },
     { label: 'Disponibilidad', icon: Settings, path: '/availability' },
     { label: 'Clientes', icon: Users, path: '/clients' },
-    { label: 'Rutinas', icon: Dumbbell, path: '/routines' },
+    { 
+      label: 'Academias/Grupos', 
+      icon: GraduationCap,
+      subItems: [
+        { label: 'Mis Academias', path: '/academies' },
+        { label: 'Dinámicas/Ejercicios', path: '/exercises' },
+        { label: 'Coaches Asignados', path: '/coach-assignments' },
+      ]
+    },
     { label: 'Configuración de Pagos', icon: CreditCard, path: '/payment-settings' },
   ];
 
@@ -64,6 +84,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   };
 
   const isActive = (path: string) => location.pathname === path;
+
+  const isAcademiesActive = () => {
+    return location.pathname.startsWith('/academies') || 
+           location.pathname.startsWith('/exercises') || 
+           location.pathname.startsWith('/coach-assignments');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
@@ -129,12 +155,67 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const active = isActive(item.path);
+              
+              // Item with submenu
+              if (item.subItems) {
+                const isAcademiesSection = isAcademiesActive();
+                const isOpen = academiesOpen || isAcademiesSection;
+                
+                return (
+                  <div key={item.label} className="space-y-1">
+                    <button
+                      onClick={() => setAcademiesOpen(!isOpen)}
+                      className={cn(
+                        'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                        isAcademiesSection
+                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-200'
+                          : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
+                      )}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon className={cn("h-5 w-5", isAcademiesSection && "drop-shadow-sm")} />
+                        <span>{item.label}</span>
+                      </div>
+                      {isOpen ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                    
+                    {/* Submenu */}
+                    {isOpen && (
+                      <div className="ml-4 pl-4 border-l-2 border-blue-200 space-y-1">
+                        {item.subItems.map((subItem) => {
+                          const subActive = isActive(subItem.path);
+                          return (
+                            <button
+                              key={subItem.path}
+                              onClick={() => navigateTo(subItem.path)}
+                              className={cn(
+                                'w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
+                                subActive
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                              )}
+                            >
+                              <span>{subItem.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              
+              // Regular item
+              const active = isActive(item.path!);
               
               return (
                 <button
                   key={item.path}
-                  onClick={() => navigateTo(item.path)}
+                  onClick={() => navigateTo(item.path!)}
                   className={cn(
                     'w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                     active

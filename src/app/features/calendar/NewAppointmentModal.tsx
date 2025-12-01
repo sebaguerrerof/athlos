@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { sportOptions, SportType } from '@/app/shared/types/sports';
-import { Calendar, Clock, User, UserPlus, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, User, UserPlus, AlertCircle, Dumbbell, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useClients } from '@/app/features/clients/hooks/useClients';
 import { useAppointments } from './hooks/useAppointments';
@@ -16,6 +16,7 @@ import { usePaymentConfig } from '@/app/features/payments/hooks/usePaymentConfig
 import { usePayments } from '@/app/features/payments/hooks/usePayments';
 import { useAuth } from '@/app/features/auth/AuthContext';
 import { useHistory } from 'react-router-dom';
+import { useExercises } from '@/app/features/academies/hooks/useExercises';
 
 const appointmentSchema = z.object({
   clientId: z.string().min(1, 'Selecciona un cliente'),
@@ -41,6 +42,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
+  const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
   const { clients, loading: loadingClients } = useClients();
   const { addAppointment, appointments } = useAppointments();
   const { availabilities } = useAvailability();
@@ -48,6 +50,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   const { addPayment } = usePayments();
   const { tenant, user } = useAuth();
   const history = useHistory();
+  const { exercises, loading: loadingExercises } = useExercises();
 
   // Filter sports to only show the ones the trainer offers
   const trainerSports = tenant?.settings?.sports || [];
@@ -179,6 +182,38 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
     ? getAvailableTimeSlots(selectedDate, selectedDuration)
     : [];
 
+  // Filter exercises by selected sport
+  const availableExercises = selectedSport
+    ? exercises.filter(ex => ex.sportType === selectedSport)
+    : [];
+
+  // Group exercises by category
+  const exercisesByCategory = availableExercises.reduce((acc, exercise) => {
+    const category = exercise.category || 'other';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(exercise);
+    return acc;
+  }, {} as Record<string, typeof exercises>);
+
+  const categoryLabels: Record<string, string> = {
+    'warm-up': 'Calentamiento',
+    'drill': 'Ejercicios',
+    'technique': 'Técnica',
+    'game': 'Juegos',
+    'cool-down': 'Enfriamiento',
+    'other': 'Otros',
+  };
+
+  const toggleExercise = (exerciseId: string) => {
+    setSelectedExercises(prev => 
+      prev.includes(exerciseId)
+        ? prev.filter(id => id !== exerciseId)
+        : [...prev, exerciseId]
+    );
+  };
+
   // Helper function to create payment after appointment
   const createPaymentForAppointment = async (
     appointmentId: string,
@@ -304,6 +339,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
               duration: data.duration,
               notes: data.notes,
               recurringGroupId,
+              exerciseIds: selectedExercises,
             });
             
             // Create payment for each recurring appointment
@@ -333,6 +369,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
           startTime: data.startTime,
           duration: data.duration,
           notes: data.notes,
+          exerciseIds: selectedExercises,
         });
         
         // Create payment for the appointment
@@ -659,6 +696,108 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
             placeholder="Agrega notas o instrucciones especiales..."
           />
         </div>
+
+        {/* Exercise Selection */}
+        {selectedSport && availableExercises.length > 0 && (
+          <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-center gap-2">
+              <Dumbbell className="h-5 w-5 text-gray-700" />
+              <Label className="text-base font-semibold">
+                Ejercicios y Dinámicas (opcional)
+              </Label>
+            </div>
+            <p className="text-sm text-gray-600">
+              Selecciona los ejercicios que realizarás en esta clase
+            </p>
+
+            {/* Selected exercises summary */}
+            {selectedExercises.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {selectedExercises.map(exerciseId => {
+                  const exercise = exercises.find(ex => ex.id === exerciseId);
+                  if (!exercise) return null;
+                  return (
+                    <span
+                      key={exerciseId}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                    >
+                      {exercise.name}
+                      <button
+                        type="button"
+                        onClick={() => toggleExercise(exerciseId)}
+                        className="hover:bg-blue-200 rounded-full p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Exercise list by category */}
+            <div className="space-y-4 max-h-64 overflow-y-auto">
+              {Object.entries(exercisesByCategory).map(([category, categoryExercises]) => (
+                <div key={category} className="space-y-2">
+                  <h4 className="text-sm font-medium text-gray-700">
+                    {categoryLabels[category] || category}
+                  </h4>
+                  <div className="space-y-1">
+                    {categoryExercises.map(exercise => (
+                      <label
+                        key={exercise.id}
+                        className="flex items-start gap-3 p-2 hover:bg-white rounded-md cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedExercises.includes(exercise.id!)}
+                          onChange={() => toggleExercise(exercise.id!)}
+                          disabled={isLoading}
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">
+                              {exercise.name}
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              exercise.difficulty === 'beginner' ? 'bg-green-100 text-green-700' :
+                              exercise.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {exercise.difficulty === 'beginner' ? 'Principiante' :
+                               exercise.difficulty === 'intermediate' ? 'Intermedio' : 'Avanzado'}
+                            </span>
+                          </div>
+                          {exercise.description && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              {exercise.description}
+                            </p>
+                          )}
+                          {exercise.duration && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              ⏱️ {exercise.duration} min
+                            </p>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedSport && availableExercises.length === 0 && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-700 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              No tienes ejercicios creados para {sportOptions.find(s => s.value === selectedSport)?.label}.
+              Puedes crear ejercicios desde el menú "Academias/Grupos" → "Dinámicas/Ejercicios"
+            </p>
+          </div>
+        )}
 
         <ModalFooter>
           <Button

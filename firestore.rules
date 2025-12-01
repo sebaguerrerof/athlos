@@ -111,6 +111,22 @@ service cloud.firestore {
         allow update: if belongsToTenant(tenantId);
         allow delete: if belongsToTenant(tenantId);
       }
+      
+      // Exercises/Dynamics subcollection
+      match /exercises/{exerciseId} {
+        allow read: if belongsToTenant(tenantId);
+        allow create: if belongsToTenant(tenantId);
+        allow update: if belongsToTenant(tenantId);
+        allow delete: if belongsToTenant(tenantId);
+      }
+      
+      // Academies subcollection
+      match /academies/{academyId} {
+        allow read: if belongsToTenant(tenantId);
+        allow create: if belongsToTenant(tenantId);
+        allow update: if belongsToTenant(tenantId);
+        allow delete: if belongsToTenant(tenantId);
+      }
     }
   }
 }

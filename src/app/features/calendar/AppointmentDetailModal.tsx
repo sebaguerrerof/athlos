@@ -13,9 +13,11 @@ import {
   DollarSign,
   Trash2,
   Edit,
-  AlertTriangle
+  AlertTriangle,
+  Dumbbell
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useExercises } from '@/app/features/academies/hooks/useExercises';
 
 interface AppointmentDetailModalProps {
   open: boolean;
@@ -31,6 +33,7 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { updateAppointment, deleteAppointment } = useAppointments();
+  const { exercises } = useExercises();
 
   const sport = appointment ? sportOptions.find(s => s.value === appointment.sportType) : null;
   
@@ -196,6 +199,64 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
               <div>
                 <Label className="text-gray-600">Notas</Label>
                 <p className="text-gray-900">{appointment.notes}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Ejercicios asignados */}
+          {appointment.exerciseIds && appointment.exerciseIds.length > 0 && (
+            <div className="flex items-start gap-3">
+              <Dumbbell className="h-5 w-5 text-gray-400 mt-0.5" />
+              <div className="flex-1">
+                <Label className="text-gray-600">Ejercicios Asignados</Label>
+                <div className="mt-2 space-y-2">
+                  {appointment.exerciseIds.map((exerciseId) => {
+                    const exercise = exercises.find(ex => ex.id === exerciseId);
+                    if (!exercise) return null;
+                    return (
+                      <div key={exerciseId} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-gray-900">{exercise.name}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                exercise.difficulty === 'beginner' ? 'bg-green-100 text-green-700' :
+                                exercise.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>
+                                {exercise.difficulty === 'beginner' ? 'Principiante' :
+                                 exercise.difficulty === 'intermediate' ? 'Intermedio' : 'Avanzado'}
+                              </span>
+                              {exercise.category && (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                                  {exercise.category === 'warm-up' && 'Calentamiento'}
+                                  {exercise.category === 'drill' && 'Ejercicio'}
+                                  {exercise.category === 'technique' && 'Técnica'}
+                                  {exercise.category === 'game' && 'Juego'}
+                                  {exercise.category === 'cool-down' && 'Enfriamiento'}
+                                </span>
+                              )}
+                            </div>
+                            {exercise.description && (
+                              <p className="text-sm text-gray-600 mb-1">{exercise.description}</p>
+                            )}
+                            <div className="flex items-center gap-3 text-xs text-gray-500">
+                              {exercise.duration && (
+                                <span>⏱️ {exercise.duration} min</span>
+                              )}
+                              {exercise.objectives && exercise.objectives.length > 0 && (
+                                <span>🎯 {exercise.objectives.length} objetivos</span>
+                              )}
+                              {exercise.materials && exercise.materials.length > 0 && (
+                                <span>🛠️ {exercise.materials.join(', ')}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}

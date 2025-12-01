@@ -27,6 +27,9 @@ export interface Appointment {
   isPaid?: boolean; // Payment status
   notes?: string;
   recurringGroupId?: string; // ID del grupo de clases recurrentes
+  exerciseIds?: string[]; // IDs de ejercicios asignados
+  academyId?: string; // ID de la academia (si es clase de academia)
+  courtId?: string; // ID de la cancha (si es clase de academia)
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -40,6 +43,9 @@ export interface CreateAppointmentData {
   duration: number;
   notes?: string;
   recurringGroupId?: string;
+  exerciseIds?: string[]; // IDs de ejercicios asignados
+  academyId?: string; // ID de la academia (si es clase de academia)
+  courtId?: string; // ID de la cancha (si es clase de academia)
 }
 
 export const useAppointments = () => {
@@ -109,6 +115,9 @@ export const useAppointments = () => {
         status: 'scheduled' as const,
         isPaid: false,
         recurringGroupId: data.recurringGroupId || null,
+        exerciseIds: data.exerciseIds || [],
+        academyId: data.academyId || null,
+        courtId: data.courtId || null,
         notes: data.notes || '',
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),

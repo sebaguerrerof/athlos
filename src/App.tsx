@@ -13,6 +13,9 @@ import { ClientListPage } from './app/features/clients/ClientListPage';
 import { PaymentSettingsPage } from './app/features/payments/PaymentSettingsPage';
 import { PublicPaymentPage } from './app/features/payments/PublicPaymentPage';
 import { OnboardingPage } from './app/features/onboarding/OnboardingPage';
+import { AcademiesPage } from './app/features/academies/AcademiesPage';
+import { ExercisesPage } from './app/features/academies/ExercisesPage';
+import { CoachAssignmentsPage } from './app/features/academies/CoachAssignmentsPage';
 import { Toaster } from '@/components/ui/sonner';
 
 const App: React.FC = () => (
@@ -35,6 +38,11 @@ const App: React.FC = () => (
         <PrivateRoute exact path="/availability" component={AvailabilitySettings} />
         <PrivateRoute exact path="/clients" component={ClientListPage} />
         <PrivateRoute exact path="/payment-settings" component={PaymentSettingsPage} />
+        
+        {/* Academies/Grupos Routes */}
+        <PrivateRoute exact path="/academies" component={AcademiesPage} />
+        <PrivateRoute exact path="/exercises" component={ExercisesPage} />
+        <PrivateRoute exact path="/coach-assignments" component={CoachAssignmentsPage} />
 
         {/* Default Redirect - go to login */}
         <Route exact path="/">
